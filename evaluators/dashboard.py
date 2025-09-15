@@ -1,3 +1,4 @@
+
 """
 Evaluation Dashboard
 
@@ -49,7 +50,7 @@ class EvaluationDashboard:
         except Exception as e:
             logger.error(f"Failed to load results file: {e}")
 
-    def generate_leaderboard(self, metric: str = "standard_composite_score") -> List[Dict[str, Any]]:
+    def generate_leaderboard(self, metric: str = "v2_composite_score") -> List[Dict[str, Any]]:
         """Generate leaderboard sorted by specified metric."""
         if not self.results_data:
             return []
@@ -65,19 +66,56 @@ class EvaluationDashboard:
                 model_stats[model_name] = {
                     'model_name': model_name,
                     'scores': [],
+                    'comm_rate': [],
+                    'good_q_rate': [],
+                    'pass_at_1': [],
+                    'test_pass_rate': [],
+                    'readability': [],
+                    'security': [],
+                    'efficiency': [],
+                    'reliability': [],
+                    'fuzz_test_robustness': [],
                     'count': 0
                 }
 
             model_stats[model_name]['scores'].append(score)
+            model_stats[model_name]['comm_rate'].append(result.get('communication_rate', 0))
+            model_stats[model_name]['good_q_rate'].append(result.get('good_question_rate', 0))
+            model_stats[model_name]['pass_at_1'].append(result.get('pass_at_1', 0))
+            model_stats[model_name]['test_pass_rate'].append(result.get('test_pass_rate', 0))
+            model_stats[model_name]['readability'].append(result.get('readability_100', 0))
+            model_stats[model_name]['security'].append(result.get('security_100', 0))
+            model_stats[model_name]['efficiency'].append(result.get('efficiency_normalized', 0))
+            model_stats[model_name]['reliability'].append(result.get('judge_consensus_confidence', 0))
+            model_stats[model_name]['fuzz_test_robustness'].append(result.get('fuzz_test_robustness', 0))
             model_stats[model_name]['count'] += 1
 
         # Calculate averages and sort
         leaderboard = []
         for model_name, stats in model_stats.items():
             avg_score = sum(stats['scores']) / len(stats['scores'])
+            avg_comm_rate = sum(stats['comm_rate']) / len(stats['comm_rate'])
+            avg_good_q_rate = sum(stats['good_q_rate']) / len(stats['good_q_rate'])
+            avg_pass_at_1 = sum(stats['pass_at_1']) / len(stats['pass_at_1'])
+            avg_test_pass_rate = sum(stats['test_pass_rate']) / len(stats['test_pass_rate'])
+            avg_readability = sum(stats['readability']) / len(stats['readability'])
+            avg_security = sum(stats['security']) / len(stats['security'])
+            avg_efficiency = sum(stats['efficiency']) / len(stats['efficiency'])
+            avg_reliability = sum(stats['reliability']) / len(stats['reliability'])
+            avg_fuzz_test_robustness = sum(stats['fuzz_test_robustness']) / len(stats['fuzz_test_robustness'])
+
             leaderboard.append({
                 'model_name': model_name,
                 'average_score': round(avg_score, 3),
+                'comm_rate': round(avg_comm_rate, 3),
+                'good_q_rate': round(avg_good_q_rate, 3),
+                'pass_at_1': round(avg_pass_at_1, 3),
+                'test_pass_rate': round(avg_test_pass_rate, 3),
+                'readability': round(avg_readability, 3),
+                'security': round(avg_security, 3),
+                'efficiency': round(avg_efficiency, 3),
+                'reliability': round(avg_reliability, 3),
+                'fuzz_test_robustness': round(avg_fuzz_test_robustness, 3),
                 'sample_count': stats['count'],
                 'min_score': round(min(stats['scores']), 3),
                 'max_score': round(max(stats['scores']), 3)
@@ -100,9 +138,16 @@ class EvaluationDashboard:
                 <tr style="background-color: #f2f2f2;">
                     <th>Rank</th>
                     <th>Model</th>
-                    <th>Average Score</th>
-                    <th>Samples</th>
-                    <th>Score Range</th>
+                    <th>V2 Score</th>
+                    <th>Comm Rate</th>
+                    <th>Good Q Rate</th>
+                    <th>Pass@1</th>
+                    <th>Test Pass</th>
+                    <th>Readability</th>
+                    <th>Security</th>
+                    <th>Efficiency</th>
+                    <th>Reliability</th>
+                    <th>Fuzz Test Robustness</th>
                 </tr>
             </thead>
             <tbody>
@@ -114,8 +159,15 @@ class EvaluationDashboard:
                     <td>{i}</td>
                     <td>{model['model_name']}</td>
                     <td>{model['average_score']:.3f}</td>
-                    <td>{model['sample_count']}</td>
-                    <td>{model['min_score']:.3f} - {model['max_score']:.3f}</td>
+                    <td>{model['comm_rate']:.3f}</td>
+                    <td>{model['good_q_rate']:.3f}</td>
+                    <td>{model['pass_at_1']:.3f}</td>
+                    <td>{model['test_pass_rate']:.3f}</td>
+                    <td>{model['readability']:.3f}</td>
+                    <td>{model['security']:.3f}</td>
+                    <td>{model['efficiency']:.3f}</td>
+                    <td>{model['reliability']:.3f}</td>
+                    <td>{model['fuzz_test_robustness']:.3f}</td>
                 </tr>
             """
 
@@ -300,7 +352,7 @@ SUMMARY STATISTICS
 ------------------
 Total Evaluations: {len(self.results_data)}
 Unique Models: {len(comparison_data)}
-Models with Data: {len(leaderboard)}
+Models with Data: {len(self.results_data)}
 
 MODEL LEADERBOARD
 ------------------
@@ -308,9 +360,16 @@ MODEL LEADERBOARD
 
         for i, model in enumerate(leaderboard, 1):
             report += f"{i:2d}. {model['model_name']:<25} "
-            report += f"Avg: {model['average_score']:.3f} "
-            report += f"Samples: {model['sample_count']:>3d} "
-            report += f"Range: {model['min_score']:.3f}-{model['max_score']:.3f}\n"
+            report += f"V2 Score: {model['average_score']:.3f} "
+            report += f"Comm Rate: {model['comm_rate']:.3f} "
+            report += f"Good Q Rate: {model['good_q_rate']:.3f} "
+            report += f"Pass@1: {model['pass_at_1']:.3f} "
+            report += f"Test Pass: {model['test_pass_rate']:.3f} "
+            report += f"Readability: {model['readability']:.3f} "
+            report += f"Security: {model['security']:.3f} "
+            report += f"Efficiency: {model['efficiency']:.3f} "
+            report += f"Reliability: {model['reliability']:.3f} "
+            report += f"Fuzz Test Robustness: {model['fuzz_test_robustness']:.3f}\n"
 
         report += "\nDETAILED BREAKDOWN\n------------------\n"
 
@@ -320,6 +379,6 @@ MODEL LEADERBOARD
             report += f"  LLM Consensus:   {data['average_llm']:.3f}\n"
             report += f"  Test Pass Rate:  {data['average_test']:.3f}\n"
             report += f"  Static Analysis: {data['average_static']:.3f}\n"
-            report += f"  Sample Count:    {data['sample_count']}\n"
+            report += f"  Sample Count:    {data['sample_count']}"
 
         return report

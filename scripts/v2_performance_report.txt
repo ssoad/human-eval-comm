@@ -2,7 +2,7 @@
 LLM Evaluation Performance Report
 ==================================
 
-Generated on: 2025-09-16 02:24:29
+Generated on: 2025-09-16 01:39:55
 
 SUMMARY STATISTICS
 ------------------
@@ -12,14 +12,14 @@ Models with Data: 1
 
 MODEL LEADERBOARD
 ------------------
- 1. V2_Evaluation_Framework   V2 Score: 5.824 Comm Rate: 0.000 Good Q Rate: 0.000 Pass@1: 1.000 Test Pass: 0.000 Readability: 89.000 Security: 100.000 Efficiency: 0.929 Reliability: 0.800 Fuzz Test Robustness: 15.500
+ 1. V2_Evaluation_Framework   Avg: 6.155 Samples:   1 Range: 6.155-6.155
 
 DETAILED BREAKDOWN
 ------------------
 
 V2_Evaluation_Framework:
-  Composite Score: 7.221
-  LLM Consensus:   6.000
+  Composite Score: 6.155
+  LLM Consensus:   0.000
   Test Pass Rate:  0.000
   Static Analysis: 9.500
   Sample Count:    1

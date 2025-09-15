@@ -100,12 +100,13 @@ phase2_prompts:
 
 judge_models:
   - name: "gemini-2.0-flash"
-    api_key: "${GEMINI_API_KEY}"
-    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-    model: "gemini-2.0-flash"
+    api_key: "${GEMINI_API_KEY}" # Replace with your Gemini API key
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent"
+    model: "gemini-2.0-flash-exp"
     max_tokens: 1000
     temperature: 0.1
     timeout: 30
+
 
   # - name: "gpt-3.5-turbo"
   #   api_key: "${OPENAI_API_KEY}"
@@ -186,10 +187,9 @@ calibration:
 
 # Aggregation weights
 evaluation_weights:
-  test_pass_rate: 0.25
-  llm_consensus: 0.20
-  static_analysis: 0.15
-  security_score: 0.15
-  readability: 0.10
-  resource_efficiency: 0.10
-  complexity_penalty: 0.05
+  correctness: 0.40
+  communication: 0.20
+  readability: 0.15
+  security: 0.10
+  efficiency: 0.10
+  maintainability: 0.05
