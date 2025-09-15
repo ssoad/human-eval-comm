@@ -1,0 +1,2 @@
+problem_id,timestamp,test_pass_rate_score,llm_consensus_score,static_analysis_score,security_score,readability_score,resource_efficiency_score,complexity_penalty,composite_score,weighted_composite_score,confidence_lower,confidence_upper,evaluation_time
+fibonacci_example,2025-09-15T18:16:44.756823,0.0,6.400000000000001,10.0,10.0,6.927576528494644,10.0,0.0,7.221262754749108,5.972757652849465,0.7040000000000001,1.0,0.000413

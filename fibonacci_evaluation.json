@@ -1,0 +1,84 @@
+{
+  "problem_id": "fibonacci_example",
+  "timestamp": "2025-09-15T18:16:44.756823",
+  "test_results": {
+    "test_passes": 0,
+    "test_failures": 0,
+    "test_errors": 0,
+    "coverage_percentage": 0.0,
+    "execution_time": 0.36311793327331543,
+    "memory_usage": 0.01171875,
+    "hypothesis_tests": 0,
+    "hypothesis_failures": 0
+  },
+  "static_results": {
+    "pylint_score": 9.5,
+    "pylint_issues": [
+      {
+        "type": "convention",
+        "message": "Missing module docstring",
+        "line": 1,
+        "column": 0
+      }
+    ],
+    "bandit_issues": [],
+    "security_score": 10.0,
+    "complexity_metrics": {
+      "cyclomatic_complexity": 3.0,
+      "maintainability_index": 69.27576528494643,
+      "lines_of_code": 7
+    },
+    "mypy_errors": [],
+    "type_coverage": 100.0
+  },
+  "llm_scores": {
+    "mean_score": 6.0,
+    "mean_confidence": 0.8,
+    "score_std": 0.0,
+    "confidence_std": 0.0,
+    "judge_responses": [
+      {
+        "score": 6.0,
+        "confidence": 0.8,
+        "rationale": "The code correctly implements the Fibonacci sequence using recursion and includes a check for negative input. However, it's highly inefficient for larger values of `n` due to redundant calculations. The docstring is adequate. The error handling is correct. Readability is good, but the lack of optimization is a significant drawback.",
+        "model_name": "gemini-2.0-flash"
+      }
+    ],
+    "consensus_score": 6.000000000000001
+  },
+  "sandbox_results": {
+    "success": true,
+    "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.3, pytest-8.4.2, pluggy-1.6.0 -- /Users/ssoad/Personal Projects/human-eval-comm/venv/bin/python\ncachedir: .pytest_cache\nhypothesis profile 'default'\nrootdir: /var/folders/gw/s9jxmbvd1t74zrchvzcdp21h0000gn/T/tmp2rxutzdj\nplugins: asyncio-1.2.0, hypothesis-6.138.16, anyio-4.10.0\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollecting ... collected 2 items\n\n../../../../var/folders/gw/s9jxmbvd1t74zrchvzcdp21h0000gn/T/tmp2rxutzdj/test_solution.py::test_fibonacci PASSED [ 50%]\n../../../../var/folders/gw/s9jxmbvd1t74zrchvzcdp21h0000gn/T/tmp2rxutzdj/test_solution.py::test_fibonacci_edge_cases PASSED [100%]\n\n============================== 2 passed in 0.19s ===============================\n",
+    "stderr": "Failed to set resource limits: current limit exceeds maximum limit\n",
+    "exit_code": 0,
+    "execution_time": 0.560234785079956,
+    "memory_used": -2.96875,
+    "cpu_time_used": 0.560234785079956,
+    "timeout": false,
+    "killed": false,
+    "error_message": ""
+  },
+  "test_pass_rate_score": 0.0,
+  "llm_consensus_score": 6.400000000000001,
+  "static_analysis_score": 10.0,
+  "security_score": 10.0,
+  "readability_score": 6.927576528494644,
+  "resource_efficiency_score": 10.0,
+  "complexity_penalty": 0.0,
+  "composite_score": 7.221262754749108,
+  "weighted_composite_score": 5.972757652849465,
+  "evaluation_time": 0.000413,
+  "weights_used": {
+    "test_pass_rate": 0.25,
+    "llm_consensus": 0.2,
+    "static_analysis": 0.15,
+    "security_score": 0.15,
+    "readability": 0.1,
+    "resource_efficiency": 0.1,
+    "complexity_penalty": 0.05
+  },
+  "confidence_interval": [
+    0.7040000000000001,
+    1.0
+  ]
+}

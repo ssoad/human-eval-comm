@@ -1,22 +1,29 @@
 # -*- coding: utf-8 -*-
+# Load environment variables from .env automatically
+import argparse
+import json
 import math
+import os
+import random
+import re
+import string
+import subprocess
 import time
 
 import nltk
 import openai
-import re
-import os
-import json
-import subprocess
-import argparse
-import random
-import string
+# Load .env variables at startup
+from dotenv import load_dotenv
 from nltk.corpus import stopwords
 from peft import PeftModel
 
+load_dotenv()
+
 # START imports By Erfan
 import sys
+
 import yaml
+
 config = []
 try:
     with open(os.path.join('config.yaml'), 'r') as f:
@@ -27,12 +34,12 @@ except Exception:
 # Standard Library Modules
 import argparse
 
-# External Modules
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 # Import for Gemini
 import google.generativeai as genai
+# External Modules
+import torch
 from openai import OpenAI
+from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 
 # set random seed
 set_seed(42)

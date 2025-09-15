@@ -156,6 +156,63 @@ The figure below shows the comparison of the effectiveness of the models in Comm
 ## Acknowledgements
 This code is heavily influenced by the Nondeterminism evaluation research of ChatGPT (https://github.com/CodeHero0/Nondeterminism-of-ChatGPT-in-Code-Generation), and by IdentityChain(https://github.com/marcusm117/IdentityChain/tree/main) on testing models including CodeLlama.
 
+## V2 Evaluators Framework
+
+We have implemented a comprehensive V2 Evaluators Framework that provides multi-dimensional evaluation of AI-generated code quality. This framework goes beyond traditional test pass rates to include:
+
+- **Multi-LLM Judges**: Structured evaluation from multiple language models
+- **Static Analysis**: Code quality, security, and complexity metrics using Pylint, Bandit, Radon, and MyPy
+- **Dynamic Testing**: Unit tests and property-based testing with Pytest and Hypothesis
+- **Sandboxed Execution**: Safe code execution with Docker containers and resource monitoring
+- **Confidence Calibration**: Calibrated confidence scores based on human annotations using scikit-learn
+- **Composite Scoring**: Weighted aggregation of all metrics with configurable weights
+
+### Quick Start with V2 Evaluators
+
+**🚀 Super Easy Setup (Recommended):**
+```bash
+# One-command setup
+python setup_evaluators.py
+
+# Or use Makefile commands
+make setup          # Automated setup
+make example        # Run example evaluation
+make evaluate CODE='def add(a,b): return a+b'  # Evaluate code instantly
+```
+
+**📚 Quick Start Guide:**
+- [QUICKSTART.md](QUICKSTART.md) - Get running in 5 minutes
+- [example_usage.py](example_usage.py) - Simple code examples
+- [evaluate_code.py](evaluate_code.py) - Command-line evaluation tool
+
+**Manual Setup:**
+```bash
+# Install dependencies
+pip install -r requirements_v2.txt
+
+# Set API keys (at least one required)
+export OPENAI_API_KEY="your-key"
+export ANTHROPIC_API_KEY="your-key"
+export GEMINI_API_KEY="your-key"
+
+# Run the evaluators test suite
+python test_evaluators.py
+
+# Run comprehensive unit tests
+python -m pytest tests/ -v
+```
+
+For detailed documentation, see [README_Evaluators.md](README_Evaluators.md).
+
+### Framework Architecture
+
+```
+MultiLLMJudge → AutomatedStaticDynamic → SandboxRunner → Calibration → Aggregator
+     ↓              ↓                      ↓              ↓            ↓
+Async LLM      Static Analysis         Safe Execution   Confidence   Composite
+Evaluation     + Dynamic Testing       + Monitoring     Calibration  Scoring
+```
+
 ## Reference
 Please consider citing this paper if you find this useful: 
 
