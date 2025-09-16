@@ -1,0 +1,4 @@
+Model,Comm Rate,Good Q Rate,Pass@1,Test Pass,Readability,Security,Efficiency,Reliability,V2 Score
+Llama-3.1-8B-Instruct,0%,0%,100%,10%,75,80,0.92,0.98,7.6
+Qwen2.5-Coder-32B-Instruct,40%,0%,67%,7%,50,53,0.58,0.64,5.2
+DeepSeek-Coder-V2-Lite-Instruct,0%,0%,0%,0%,0,0,0.00,0.00,0.0
