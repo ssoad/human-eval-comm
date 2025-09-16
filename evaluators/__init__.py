@@ -11,6 +11,7 @@ from .automated_static_dynamic import AutomatedStaticDynamic
 from .calibration import Calibration
 from .multi_llm_judge import MultiLLMJudge
 from .sandbox_runner import SandboxRunner
+from .hf_multi_llm_judge import HFMultiLLMJudge
 
 __all__ = [
     "MultiLLMJudge",
@@ -18,4 +19,5 @@ __all__ = [
     "SandboxRunner",
     "Calibration",
     "Aggregator",
+    "HFMultiLLMJudge",
 ]
