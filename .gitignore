@@ -41,3 +41,7 @@ recycle_bin/*
 *.rej
 .DS_Store
 .env
+benchmark*.csv
+*benchmark*.csv
+
+private/*
