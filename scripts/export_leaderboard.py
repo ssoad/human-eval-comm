@@ -121,7 +121,7 @@ def load_eval_results(path: str = "evaluation_results.jsonl") -> List[Dict[str, 
     return rows
 
 
-def aggregate_by_model(eval_rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+def aggregate_by_model(eval_rows: List[Dict[str, Any]], comm_by_model: Dict[str, CommMetrics]) -> Dict[str, Dict[str, float]]:
     agg: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
     counts: Dict[str, int] = defaultdict(int)
 
@@ -129,30 +129,52 @@ def aggregate_by_model(eval_rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, f
         model = r.get("model_name", "unknown")
         counts[model] += 1
 
-        # Averages
-        agg[model]["pass_at_1"] += 100.0 if r.get("test_pass_rate", 0) > 0 else 0.0
-        agg[model]["test_pass_rate"] += r.get(
-            "standard_composite_score", 0.0
-        )  # placeholder if needed
-        agg[model]["readability_100"] += r.get("readability_100", 0.0)
-        agg[model]["security_100"] += r.get("security_100", 0.0)
+        # Communication metrics (from eval results, but will be overridden by comm_by_model)
+        agg[model]["communication_rate"] += r.get("communication_rate", 0.0)
+        agg[model]["good_question_rate"] += r.get("good_question_rate", 0.0)
+
+        # Code Correctness
+        agg[model]["pass_at_1"] += r.get("pass_at_1", 0.0) * 100.0
+        agg[model]["test_pass_rate"] += r.get("test_pass_rate", 0.0) * 100.0
+        agg[model]["fuzz_test_robustness"] += r.get("fuzz_test_robustness", 0.0)
+
+        # Code Trustworthiness
+        agg[model]["readability_score"] += r.get("readability_100", 0.0)
+        agg[model]["maintainability_index"] += r.get("maintainability_index_100", 0.0)
+        agg[model]["security_score"] += r.get("security_100", 0.0)
+
+        # Efficiency
         agg[model]["efficiency_normalized"] += r.get("efficiency_normalized", 0.0)
-        agg[model]["v2_score"] += r.get("v2_composite_score", 0.0) * 10.0
-        agg[model]["judge_consensus_confidence"] += (
-            r.get("judge_consensus_confidence", 0.0) * 100.0
-        )
+        agg[model]["runtime_sec"] += r.get("runtime_sec", 0.0)
+        agg[model]["peak_memory_mb"] += r.get("peak_memory_mb", 0.0)
+
+        # Reliability Indicators
+        agg[model]["judge_consensus_confidence"] += r.get("judge_consensus_confidence", 0.0) * 100.0
+        agg[model]["calibration_gap_percent"] += r.get("calibration_gap_percent", 0.0)
+
+        # Composite Score
+        agg[model]["v2_score"] += r.get("v2_composite_score", 0.0) * 100.0
 
     # Finalize
     finalized: Dict[str, Dict[str, float]] = {}
     for model, sums in agg.items():
         n = max(1, counts[model])
+        comm_metrics = comm_by_model.get(model, CommMetrics())
         finalized[model] = {
+            "Communication Rate": round(comm_metrics.comm_rate(), 1),
+            "Good Question Rate": round(comm_metrics.good_q_rate(), 1),
+            "Clarification Efficiency": round(comm_metrics.clarification_efficiency(), 2),
             "Pass@1": round(sums["pass_at_1"] / n, 1),
-            "Test Pass": round(sums["test_pass_rate"] / n, 2),
-            "Readability": round(sums["readability_100"] / n, 1),
-            "Security": round(sums["security_100"] / n, 1),
+            "Test Pass Rate": round(sums["test_pass_rate"] / n, 1),
+            "Fuzz Test Robustness": round(sums["fuzz_test_robustness"] / n, 1),
+            "Readability Score": round(sums["readability_score"] / n, 1),
+            "Maintainability Index": round(sums["maintainability_index"] / n, 1),
+            "Security Score": round(sums["security_score"] / n, 1),
             "Efficiency": round(sums["efficiency_normalized"] / n, 3),
-            "Reliability": round(sums["judge_consensus_confidence"] / n / 100.0, 2),
+            "Runtime": round(sums["runtime_sec"] / n, 2),
+            "Peak Memory": round(sums["peak_memory_mb"] / n, 2),
+            "Judge Consensus Confidence": round(sums["judge_consensus_confidence"] / n, 1),
+            "Calibration Gap": round(sums["calibration_gap_percent"] / n, 1),
             "V2 Score": round(sums["v2_score"] / n, 1),
         }
     return finalized
@@ -170,11 +192,16 @@ def write_leaderboard_csv(
         "Good Q Rate",
         "Clarification Efficiency",
         "Pass@1",
-        "Test Pass",
-        "Readability",
-        "Security",
+        "Test Pass Rate",
+        "Fuzz Test Robustness",
+        "Readability Score",
+        "Maintainability Index",
+        "Security Score",
         "Efficiency",
-        "Reliability",
+        "Runtime",
+        "Peak Memory",
+        "Judge Consensus Confidence",
+        "Calibration Gap",
         "V2 Score",
     ]
     with open(output_path, "w") as f:
@@ -185,15 +212,20 @@ def write_leaderboard_csv(
             e = eval_by_model.get(model, {})
             row = [
                 model,
-                f"{c.comm_rate():.0f}%",
-                f"{c.good_q_rate():.0f}%",
+                f"{c.comm_rate():.1f}%",
+                f"{c.good_q_rate():.1f}%",
                 f"{c.clarification_efficiency():.2f}",
                 f"{e.get('Pass@1', 0.0):.1f}%",
-                f"{e.get('Test Pass', 0.0):.2f}",
-                f"{e.get('Readability', 0.0):.0f}",
-                f"{e.get('Security', 0.0):.0f}",
-                f"{e.get('Efficiency', 0.0):.2f}",
-                f"{e.get('Reliability', 0.0):.2f}",
+                f"{e.get('Test Pass Rate', 0.0):.1f}%",
+                f"{e.get('Fuzz Test Robustness', 0.0):.1f}%",
+                f"{e.get('Readability Score', 0.0):.1f}",
+                f"{e.get('Maintainability Index', 0.0):.1f}",
+                f"{e.get('Security Score', 0.0):.1f}",
+                f"{e.get('Efficiency', 0.0):.3f}",
+                f"{e.get('Runtime', 0.0):.2f}",
+                f"{e.get('Peak Memory', 0.0):.2f}",
+                f"{e.get('Judge Consensus Confidence', 0.0):.1f}%",
+                f"{e.get('Calibration Gap', 0.0):.1f}%",
                 f"{e.get('V2 Score', 0.0):.1f}",
             ]
             f.write(",".join(map(str, row)) + "\n")
@@ -202,7 +234,7 @@ def write_leaderboard_csv(
 def main():
     comm_by_model = parse_comm_metrics("log")
     eval_rows = load_eval_results("evaluation_results.jsonl")
-    eval_by_model = aggregate_by_model(eval_rows)
+    eval_by_model = aggregate_by_model(eval_rows, comm_by_model)
 
     write_leaderboard_csv("results/leaderboard.csv", comm_by_model, eval_by_model)
     print("Leaderboard written to results/leaderboard.csv")
