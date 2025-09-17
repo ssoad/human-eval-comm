@@ -138,7 +138,7 @@ class V2BenchmarkFinal:
         
         load_dotenv()
         
-        hf_token = os.getenv("HF_TOKEN") or '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'
+        hf_token = os.getenv("HF_TOKEN") or 'USE_YOUR_TOKEN'
         if not hf_token:
             raise ValueError("❌ No HuggingFace API token found!")
         
