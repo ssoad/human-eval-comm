@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumanEvalComm V2 Detailed Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .table th {
+            background-color: #f8f9fa;
+            border-top: none;
+            font-weight: 600;
+            color: #495057;
+        }
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-question { background: #d1ecf1; color: #0c5460; }
+        .status-error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8">
+                    <h1 class="display-4 fw-bold">Detailed Results</h1>
+                    <p class="lead">HumanEvalComm V2 Evaluation Details</p>
+                    <p class="mb-0">Individual problem evaluations and performance metrics</p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <div class="mt-4">
+                        <a href="/" class="btn btn-light">
+                            <i class="fas fa-arrow-left"></i> Back to Leaderboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Filters -->
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-6">
+                        <label for="model" class="form-label fw-semibold">Model</label>
+                        <select name="model" id="model" class="form-select">
+                            <option value="">All Models</option>
+                            {% for model in models %}
+                            <option value="{{ model }}" {% if model == selected_model %}selected{% endif %}>
+                                {{ model }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="problem" class="form-label fw-semibold">Problem</label>
+                        <select name="problem" id="problem" class="form-select">
+                            <option value="">All Problems</option>
+                            {% for problem in problems %}
+                            <option value="{{ problem }}" {% if problem == selected_problem %}selected{% endif %}>
+                                {{ problem }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-filter"></i> Apply Filters
+                        </button>
+                        <a href="/detailed" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Clear
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Evaluation Results</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Problem</th>
+                                <th>Model</th>
+                                <th>Prompt</th>
+                                <th>Status</th>
+                                <th>V2 Score</th>
+                                <th>Test Pass</th>
+                                <th>LLM Judge</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for index, row in df.iterrows() %}
+                            <tr>
+                                <td><strong>{{ row['problem_id'] }}</strong></td>
+                                <td>{{ row['model_name'] }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ row['prompt_type'] }}</span>
+                                </td>
+                                <td>
+                                    {% if row['is_question'] %}
+                                        <span class="status-badge status-question">
+                                            <i class="fas fa-question-circle"></i> Question
+                                        </span>
+                                    {% elif row['execution_success'] %}
+                                        <span class="status-badge status-success">
+                                            <i class="fas fa-check-circle"></i> Success
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge status-error">
+                                            <i class="fas fa-times-circle"></i> Error
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ "%.1f"|format(row['v2_weighted_score']) }}</strong>
+                                </td>
+                                <td>
+                                    <strong>{{ "%.0f"|format(row['test_pass_rate']) }}%</strong>
+                                </td>
+                                <td>
+                                    {% if row['judge_count'] > 0 %}
+                                        <strong>{{ "%.1f"|format(row['llm_consensus_score']) }}/10</strong>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showDetails({{ index }})">
+                                        <i class="fas fa-eye"></i> Details
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-chart-bar"></i> Summary</h6>
+                        <p class="card-text">
+                            <strong>Total Evaluations:</strong> {{ df|length }}<br>
+                            <strong>Successful:</strong> {{ df[df['execution_success'] == True]|length if 'execution_success' in df else 0 }}<br>
+                            <strong>Questions:</strong> {{ df[df['is_question'] == True]|length if 'is_question' in df else 0 }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-info-circle"></i> Data Source</h6>
+                        <p class="card-text">
+                            <strong>Results File:</strong> {{ files_info.latest_results.split('/')[-1] if files_info.latest_results else 'N/A' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Details -->
+    <div class="modal fade" id="detailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Evaluation Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detailsModalBody">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store results data for modal display
+        const resultsData = {{ df.to_json(orient='records')|safe }};
+
+        function showDetails(index) {
+            const result = resultsData[index];
+            const modalBody = document.getElementById('detailsModalBody');
+
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>V2 Evaluation Scores:</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>V2 Composite Score:</span>
+                                <strong>${result.v2_weighted_score.toFixed(1)}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Test Pass Rate:</span>
+                                <strong>${result.test_pass_rate.toFixed(0)}%</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Static Analysis:</span>
+                                <strong>${result.static_analysis_score.toFixed(1)}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Security Score:</span>
+                                <strong>${result.security_score.toFixed(1)}</strong>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Multi-LLM Judge:</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Consensus Score:</span>
+                                <strong>${result.llm_consensus_score.toFixed(1)}/10</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Judge Count:</span>
+                                <strong>${result.judge_count}</strong>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span>Confidence:</span>
+                                <strong>${(result.llm_mean_confidence * 100).toFixed(0)}%</strong>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <h6>Execution Details:</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Execution Time:</span>
+                            <strong>${result.execution_time.toFixed(3)}s</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Memory Usage:</span>
+                            <strong>${result.memory_usage.toFixed(2)} MB</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Formula Used:</span>
+                            <strong>${result.formula_used}</strong>
+                        </li>
+                    </ul>
+                </div>
+
+                ${result.error_message ? `
+                <div class="mt-3">
+                    <h6>Error Message:</h6>
+                    <div class="alert alert-danger">${result.error_message}</div>
+                </div>
+                ` : ''}
+            `;
+
+            new bootstrap.Modal(document.getElementById('detailsModal')).show();
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
