@@ -7,43 +7,314 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --color-slate-50: #f8fafc;
+            --color-slate-100: #f1f5f9;
+            --color-slate-200: #e2e8f0;
+            --color-slate-300: #cbd5e1;
+            --color-slate-400: #94a3b8;
+            --color-slate-500: #64748b;
+            --color-slate-600: #475569;
+            --color-slate-700: #334155;
+            --color-slate-800: #1e293b;
+            --color-slate-900: #0f172a;
+
+            --color-blue-50: #eff6ff;
+            --color-blue-100: #dbeafe;
+            --color-blue-200: #bfdbfe;
+            --color-blue-500: #3b82f6;
+            --color-blue-600: #2563eb;
+            --color-blue-700: #1d4ed8;
+
+            --color-emerald-50: #ecfdf5;
+            --color-emerald-100: #d1fae5;
+            --color-emerald-600: #059669;
+
+            --color-amber-50: #fffbeb;
+            --color-amber-100: #fef3c7;
+            --color-amber-600: #d97706;
+
+            --color-red-50: #fef2f2;
+            --color-red-100: #fee2e2;
+            --color-red-600: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #212529;
+            background-color: var(--color-slate-50);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: var(--color-slate-800);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
+
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--color-slate-800) 0%, var(--color-slate-900) 100%);
             color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
+            padding: 3rem 0;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
         }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 60%);
+            pointer-events: none;
+        }
+
+        .header .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .navbar {
+            background-color: white !important;
+            border-bottom: 1px solid var(--color-slate-200);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            padding: 0.75rem 0;
+            min-height: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            color: var(--color-slate-900) !important;
+            font-weight: 600;
+            font-size: 1.125rem;
+            letter-spacing: -0.025em;
+        }
+
+        .nav-link {
+            color: var(--color-slate-600) !important;
+            font-weight: 500;
+            transition: color 0.15s ease-in-out;
+        }
+
+        .nav-link:hover {
+            color: var(--color-slate-900) !important;
+        }
+
+        .nav-link.active {
+            color: var(--color-blue-600) !important;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1280px;
+        }
+
         .card {
-            border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 1.5rem;
+            border: 1px solid var(--color-slate-200);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            margin-bottom: 32px;
+            background-color: white;
+            transition: box-shadow 0.15s ease-in-out;
         }
+
+        .card:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-header {
+            background-color: var(--color-slate-50);
+            border-bottom: 1px solid var(--color-slate-200);
+            padding: 20px 24px;
+            border-radius: 12px 12px 0 0 !important;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
         .table {
             margin-bottom: 0;
+            border-collapse: separate;
+            border-spacing: 0;
         }
+
         .table th {
-            background-color: #f8f9fa;
-            border-top: none;
+            background-color: var(--color-slate-800);
+            color: white;
+            border: 1px solid var(--color-slate-700);
             font-weight: 600;
-            color: #495057;
+            padding: 16px 12px;
+            font-size: 0.8125rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
+
+        .table td {
+            vertical-align: middle;
+            border-color: var(--color-slate-200);
+            padding: 16px 12px;
+            color: var(--color-slate-700);
+            transition: background-color 0.15s ease-in-out;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--color-slate-50);
+        }
+
         .status-badge {
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8125rem;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-success {
+            background-color: var(--color-emerald-50);
+            color: var(--color-emerald-600);
+            border-color: var(--color-emerald-100);
+        }
+
+        .status-question {
+            background-color: var(--color-blue-50);
+            color: var(--color-blue-600);
+            border-color: var(--color-blue-100);
+        }
+
+        .status-error {
+            background-color: var(--color-red-50);
+            color: var(--color-red-600);
+            border-color: var(--color-red-100);
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 10px 16px;
+            transition: all 0.15s ease-in-out;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--color-blue-600);
+            border-color: var(--color-blue-600);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-blue-700);
+            border-color: var(--color-blue-700);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-secondary {
+            color: var(--color-slate-600);
+            border-color: var(--color-slate-300);
+            background-color: transparent;
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: var(--color-slate-50);
+            border-color: var(--color-slate-400);
+            color: var(--color-slate-700);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 600;
+            color: var(--color-slate-900);
+            margin-bottom: 1rem;
+            letter-spacing: -0.025em;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--color-slate-700);
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid var(--color-slate-300);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.875rem;
+            transition: all 0.15s ease-in-out;
+            background-color: white;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--color-blue-500);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .text-muted {
+            color: var(--color-slate-500) !important;
+        }
+
+        .card-title {
+            margin-bottom: 1.5rem;
+            font-size: 1.125rem;
             font-weight: 600;
         }
-        .status-success { background: #d4edda; color: #155724; }
-        .status-question { background: #d1ecf1; color: #0c5460; }
-        .status-error { background: #f8d7da; color: #721c24; }
+
+        /* Modal styling */
+        .modal-content {
+            border: 1px solid var(--color-slate-200);
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid var(--color-slate-200);
+            padding: 20px 24px;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header {
+                padding: 2rem 0;
+            }
+
+            .card-body {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-trophy"></i> HumanEvalComm V2 Leaderboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link{% if request.endpoint == 'index' %} active{% endif %}" href="/">
+                    <i class="fas fa-home"></i> Main Leaderboard
+                </a>
+                <a class="nav-link{% if request.endpoint == 'detailed' %} active{% endif %}" href="/detailed">
+                    <i class="fas fa-chart-line"></i> Detailed Results
+                </a>
+            </div>
+        </div>
+    </nav>
+
     <!-- Header -->
     <div class="header">
         <div class="container">
