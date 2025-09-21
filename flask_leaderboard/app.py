@@ -11,134 +11,22 @@ Features:
 - Robust error handling
 """
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import json
 import os
-import glob
 from datetime import datetime
-import plotly.graph_objs as go
-import plotly.utils
+
+from config import Config
+from data_manager import LeaderboardManager
+from charts import ChartGenerator
 
 app = Flask(__name__)
+app.config.from_object(Config)
 
-class LeaderboardManager:
-    """Manages leaderboard data and operations."""
-    
-    def __init__(self):
-        self.base_dir = os.path.dirname(os.path.dirname(__file__))
-        self.cache = {}
-        self.cache_time = {}
-        
-    def find_latest_files(self):
-        """Find the latest leaderboard and results files."""
-        # Look for V2 leaderboard files
-        leaderboard_pattern = os.path.join(self.base_dir, 'v2_*leaderboard*.csv')
-        results_pattern = os.path.join(self.base_dir, 'v2_*results*.json')
-        
-        leaderboard_files = glob.glob(leaderboard_pattern)
-        results_files = glob.glob(results_pattern)
-        
-        # Sort by modification time (newest first)
-        leaderboard_files.sort(key=os.path.getmtime, reverse=True)
-        results_files.sort(key=os.path.getmtime, reverse=True)
-        
-        return {
-            'leaderboard_files': leaderboard_files,
-            'results_files': results_files,
-            'latest_leaderboard': leaderboard_files[0] if leaderboard_files else None,
-            'latest_results': results_files[0] if results_files else None
-        }
-    
-    def load_leaderboard_data(self, file_path=None):
-        """Load leaderboard data with caching."""
-        if file_path is None:
-            files = self.find_latest_files()
-            file_path = files['latest_leaderboard']
-            
-        if not file_path or not os.path.exists(file_path):
-            return None
-            
-        # Check cache
-        cache_key = f"leaderboard_{file_path}"
-        file_mtime = os.path.getmtime(file_path)
-        
-        if cache_key in self.cache and self.cache_time.get(cache_key, 0) >= file_mtime:
-            return self.cache[cache_key]
-        
-        try:
-            df = pd.read_csv(file_path)
-            
-            # Clean and process data with robust error handling
-            for col in df.columns:
-                if col == 'Model':
-                    continue  # Skip model column
-                    
-                # Convert all data columns to string first for cleaning
-                df[col] = df[col].astype(str)
-                
-                # Clean malformed data like '100%100%' or '50%'
-                if df[col].str.contains('%').any():
-                    # Remove all % signs and extract first number
-                    df[col] = df[col].str.replace('%', '', regex=False)
-                    # Extract first number if there are multiple concatenated
-                    df[col] = df[col].str.extract(r'(\d+(?:\.\d+)?)', expand=False)
-                
-                # Convert to numeric
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-            
-            # Debug: print cleaned DataFrame info
-            print(f"[DEBUG] Successfully loaded and cleaned {file_path}")
-            print(f"[DEBUG] DataFrame shape: {df.shape}")
-            print(f"[DEBUG] Columns: {df.columns.tolist()}")
-            
-            # Cache the data
-            self.cache[cache_key] = df
-            self.cache_time[cache_key] = file_mtime
-            
-            return df
-            
-        except Exception as e:
-            print(f"Error loading leaderboard data: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
-    
-    def load_detailed_results(self, file_path=None):
-        """Load detailed results data."""
-        if file_path is None:
-            files = self.find_latest_files()
-            file_path = files['latest_results']
-            
-        if not file_path or not os.path.exists(file_path):
-            return None
-            
-        try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-            return data
-        except Exception as e:
-            print(f"Error loading results data: {e}")
-            return None
-    
-    def get_summary_stats(self, df):
-        """Get summary statistics."""
-        if df is None or df.empty:
-            return {}
-            
-        stats = {
-            'total_models': len(df),
-            'avg_v2_score': df['V2 Score'].mean() if 'V2 Score' in df else 0,
-            'avg_comm_rate': df['Comm Rate'].mean() if 'Comm Rate' in df else 0,
-            'avg_pass_at_1': df['Pass@1'].mean() if 'Pass@1' in df else 0,
-            'top_model': df.iloc[0]['Model'] if not df.empty else 'N/A',
-            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-        
-        return stats
-
-# Initialize manager
+# Initialize manager and chart generator
 manager = LeaderboardManager()
+chart_generator = ChartGenerator(Config)
 
 @app.route('/')
 def index():
@@ -211,89 +99,12 @@ def api_charts():
         df = manager.load_leaderboard_data()
         if df is None:
             return jsonify({'error': 'No data available'})
-        
-        # Create chart data
-        # Prepare chart containers (always include keys to avoid missing-key issues on the frontend)
-        charts = {
-            'v2_scores': {'x': [], 'y': []},
-            'communication': {'models': [], 'comm_rate': [], 'good_q_rate': []},
-            'performance_radar': {'models': [], 'metrics': [], 'values': []},
-            'trustworthiness': {},
-            'heatmap': {'x': [], 'y': [], 'z': []}
-        }
 
-        # V2 Score comparison
-        if 'V2 Score' in df.columns:
-            charts['v2_scores'] = {
-                'x': df['Model'].tolist(),
-                'y': df['V2 Score'].tolist()
-            }
+        # Generate all chart data using ChartGenerator
+        charts = chart_generator.generate_all_charts(df)
 
-        # Communication metrics
-        if 'Comm Rate' in df.columns and 'Good Q Rate' in df.columns:
-            charts['communication'] = {
-                'models': df['Model'].tolist(),
-                'comm_rate': df['Comm Rate'].tolist(),
-                'good_q_rate': df['Good Q Rate'].tolist()
-            }
-        
-        # Performance radar & trustworthiness metrics
-        performance_cols = ['Pass@1', 'Test Pass', 'Readability', 'Security', 'Efficiency', 'Reliability']
-        available_perf_cols = [col for col in performance_cols if col in df.columns]
-
-        if available_perf_cols:
-            # Build a radar-friendly structure: metrics list and values per model
-            models = df['Model'].tolist()
-            metrics = available_perf_cols
-            # values: list of lists, each inner list contains metric values for one model (in same order as metrics)
-            values = []
-            for _, row in df.iterrows():
-                values.append([row[col] for col in metrics])
-
-            charts['performance_radar'] = {
-                'models': models,
-                'metrics': metrics,
-                'values': values
-            }
-
-        # Trustworthiness grouping (explicit metrics expected by the frontend)
-        trust_metrics = ['Readability', 'Security', 'Efficiency', 'Reliability']
-        available_trust = [m for m in trust_metrics if m in df.columns]
-        if available_trust:
-            trust = {'models': df['Model'].tolist()}
-            for m in available_trust:
-                trust[m] = df[m].tolist()
-            charts['trustworthiness'] = trust
-        else:
-            # Ensure trustworthiness has an explicit models key for frontend sanity
-            charts['trustworthiness'] = {'models': []}
-
-        # Heatmap: rows = models, cols = selected metrics (use performance metrics if available)
-        if available_perf_cols:
-            heatmap_z = []
-            heatmap_x = available_perf_cols
-            heatmap_y = df['Model'].tolist()
-            for _, row in df.iterrows():
-                heatmap_z.append([row[col] for col in heatmap_x])
-
-            charts['heatmap'] = {
-                'x': heatmap_x,
-                'y': heatmap_y,
-                'z': heatmap_z
-            }
-
-        # Debug: print quick summary to server logs for easier diagnosis
-        try:
-            print('[DEBUG] /api/charts: v2_scores:', len(charts.get('v2_scores', {}).get('x', [])),
-                  'communication:', len(charts.get('communication', {}).get('models', [])),
-                  'performance_radar_models:', len(charts.get('performance_radar', {}).get('models', [])),
-                  'trust_models:', len(charts.get('trustworthiness', {}).get('models', [])),
-                  'heatmap_rows:', len(charts.get('heatmap', {}).get('y', [])))
-        except Exception:
-            pass
-        
         return jsonify(charts)
-        
+
     except Exception as e:
         return jsonify({'error': str(e)})
 
