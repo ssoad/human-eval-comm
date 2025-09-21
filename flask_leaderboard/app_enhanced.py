@@ -175,14 +175,14 @@ def index():
         columns = [col for col in df.columns if col != 'Model']
         
         return render_template('index.html',
-                              df=filtered_df,
-                              models=models,
-                              columns=columns,
-                              selected_model=selected_model,
-                              sort_by=sort_by,
-                              sort_order=sort_order,
-                              stats=stats,
-                              files_info=files_info)
+                             df=filtered_df,
+                             models=models,
+                             columns=columns,
+                             selected_model=selected_model,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             stats=stats,
+                             files_info=files_info)
                              
     except Exception as e:
         return render_template('error.html', error=f"Error loading leaderboard: {e}")
@@ -213,17 +213,22 @@ def api_charts():
             return jsonify({'error': 'No data available'})
         
         # Create chart data
-        charts = {}
-        
+        # Prepare chart containers (always include keys to avoid missing-key issues on the frontend)
+        charts = {
+            'v2_scores': {'x': [], 'y': []},
+            'communication': {'models': [], 'comm_rate': [], 'good_q_rate': []},
+            'performance_radar': {'models': [], 'metrics': [], 'values': []},
+            'trustworthiness': {},
+            'heatmap': {'x': [], 'y': [], 'z': []}
+        }
+
         # V2 Score comparison
         if 'V2 Score' in df.columns:
             charts['v2_scores'] = {
                 'x': df['Model'].tolist(),
-                'y': df['V2 Score'].tolist(),
-                'type': 'bar',
-                'name': 'V2 Score'
+                'y': df['V2 Score'].tolist()
             }
-        
+
         # Communication metrics
         if 'Comm Rate' in df.columns and 'Good Q Rate' in df.columns:
             charts['communication'] = {
@@ -232,74 +237,61 @@ def api_charts():
                 'good_q_rate': df['Good Q Rate'].tolist()
             }
         
-        # Performance metrics
+        # Performance radar & trustworthiness metrics
         performance_cols = ['Pass@1', 'Test Pass', 'Readability', 'Security', 'Efficiency', 'Reliability']
-        available_cols = [col for col in performance_cols if col in df.columns]
+        available_perf_cols = [col for col in performance_cols if col in df.columns]
 
-        if available_cols:
-            charts['performance'] = {
-                'models': df['Model'].tolist(),
-                'metrics': {}
-            }
-            for col in available_cols:
-                charts['performance']['metrics'][col] = df[col].tolist()
+        if available_perf_cols:
+            # Build a radar-friendly structure: metrics list and values per model
+            models = df['Model'].tolist()
+            metrics = available_perf_cols
+            # values: list of lists, each inner list contains metric values for one model (in same order as metrics)
+            values = []
+            for _, row in df.iterrows():
+                values.append([row[col] for col in metrics])
 
-        # Performance Radar Chart
-        radar_metrics = ['Pass@1', 'Test Pass', 'Readability', 'Security']
-        available_radar = [col for col in radar_metrics if col in df.columns]
-
-        if available_radar and len(df) > 0:
             charts['performance_radar'] = {
-                'models': df['Model'].tolist(),
-                'metrics': available_radar,
-                'values': []
+                'models': models,
+                'metrics': metrics,
+                'values': values
             }
 
-            # Normalize values for radar chart (0-100 scale)
-            for _, row in df.iterrows():
-                values = []
-                for metric in available_radar:
-                    val = row[metric]
-                    # Normalize based on metric type
-                    if metric in ['Pass@1', 'Test Pass']:
-                        # Already percentage, keep as is
-                        values.append(min(100, max(0, val)))
-                    elif metric in ['Readability', 'Security']:
-                        # Scale to 0-100
-                        values.append(min(100, max(0, val)))
-                    else:
-                        values.append(min(100, max(0, val * 100)))  # For other metrics
-                charts['performance_radar']['values'].append(values)
-
-        # Trustworthiness Chart
+        # Trustworthiness grouping (explicit metrics expected by the frontend)
         trust_metrics = ['Readability', 'Security', 'Efficiency', 'Reliability']
-        available_trust = [col for col in trust_metrics if col in df.columns]
-
+        available_trust = [m for m in trust_metrics if m in df.columns]
         if available_trust:
-            charts['trustworthiness'] = {
-                'models': df['Model'].tolist()
-            }
-            for col in available_trust:
-                charts['trustworthiness'][col] = df[col].tolist()
+            trust = {'models': df['Model'].tolist()}
+            for m in available_trust:
+                trust[m] = df[m].tolist()
+            charts['trustworthiness'] = trust
+        else:
+            # Ensure trustworthiness has an explicit models key for frontend sanity
+            charts['trustworthiness'] = {'models': []}
 
-        # Performance Heatmap
-        heatmap_metrics = ['V2 Score', 'Comm Rate', 'Pass@1', 'Test Pass', 'Readability', 'Security', 'Efficiency', 'Reliability']
-        available_heatmap = [col for col in heatmap_metrics if col in df.columns]
-
-        if available_heatmap and len(df) > 0:
-            charts['heatmap'] = {
-                'x': available_heatmap,
-                'y': df['Model'].tolist(),
-                'z': []
-            }
-
+        # Heatmap: rows = models, cols = selected metrics (use performance metrics if available)
+        if available_perf_cols:
+            heatmap_z = []
+            heatmap_x = available_perf_cols
+            heatmap_y = df['Model'].tolist()
             for _, row in df.iterrows():
-                row_values = []
-                for metric in available_heatmap:
-                    val = row[metric]
-                    row_values.append(val)
-                charts['heatmap']['z'].append(row_values)
+                heatmap_z.append([row[col] for col in heatmap_x])
 
+            charts['heatmap'] = {
+                'x': heatmap_x,
+                'y': heatmap_y,
+                'z': heatmap_z
+            }
+
+        # Debug: print quick summary to server logs for easier diagnosis
+        try:
+            print('[DEBUG] /api/charts: v2_scores:', len(charts.get('v2_scores', {}).get('x', [])),
+                  'communication:', len(charts.get('communication', {}).get('models', [])),
+                  'performance_radar_models:', len(charts.get('performance_radar', {}).get('models', [])),
+                  'trust_models:', len(charts.get('trustworthiness', {}).get('models', [])),
+                  'heatmap_rows:', len(charts.get('heatmap', {}).get('y', [])))
+        except Exception:
+            pass
+        
         return jsonify(charts)
         
     except Exception as e:
@@ -333,16 +325,54 @@ def detailed():
         models = sorted(df_results['model_name'].unique()) if 'model_name' in df_results else []
         problems = sorted(df_results['problem_id'].unique()) if 'problem_id' in df_results else []
         
+        # Load problems data for question display
+        problems_data = {}
+        try:
+            # Try to load from HumanEvalComm_v2.jsonl
+            problems_file = os.path.join(manager.base_dir, 'Benchmark',
+                                         'HumanEvalComm_v2.jsonl')
+            if os.path.exists(problems_file):
+                problems_data = {}
+                with open(problems_file, 'r') as f:
+                    for line in f:
+                        problem = json.loads(line.strip())
+                        problem_id = problem.get('name', '')
+                        if problem_id:
+                            # Use the appropriate prompt based on prompt_type
+                            prompt = problem.get('prompt', '')
+                            problems_data[problem_id] = {
+                                'prompt': prompt,
+                                'entry_point': problem.get('entry_point', ''),
+                                'test_case': problem.get('test_case', [])
+                            }
+        except Exception as e:
+            print(f"Warning: Could not load problems data: {e}")
+        
+        # Format last updated timestamp
+        last_updated = 'N/A'
+        if (files_info.get('latest_results') and
+                os.path.exists(files_info['latest_results'])):
+            try:
+                mtime = os.path.getmtime(files_info['latest_results'])
+                last_updated = datetime.fromtimestamp(mtime).strftime(
+                    '%Y-%m-%d %H:%M')
+            except Exception:
+                pass
+
         return render_template('detailed.html',
-                             df=df_results,
-                             models=models,
-                             problems=problems,
-                             selected_model=selected_model,
-                             selected_problem=selected_problem,
-                             files_info=files_info)
-                             
+                               df=df_results,
+                               models=models,
+                               problems=problems,
+                               selected_model=selected_model,
+                               selected_problem=selected_problem,
+                               files_info=files_info,
+                               last_updated=last_updated,
+                               problems_data=problems_data)
+
     except Exception as e:
-        return render_template('error.html', error=f"Error loading detailed results: {e}")
+        error_msg = f"Error loading detailed results: {e}"
+        return render_template('error.html', error=error_msg)
+
 
 @app.route('/refresh')
 def refresh():
@@ -354,6 +384,7 @@ def refresh():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
+
 @app.route('/files')
 def files():
     """List available files."""
@@ -362,6 +393,7 @@ def files():
         return jsonify(files_info)
     except Exception as e:
         return jsonify({'error': str(e)})
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)
