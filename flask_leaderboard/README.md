@@ -40,7 +40,7 @@ cd humaneval-comm-leaderboard/flask_leaderboard
 
 # Install and run
 pip install -r requirements.txt
-python app_enhanced.py
+python app.py
 
 # Visit http://localhost:8080
 ```
