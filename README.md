@@ -243,11 +243,52 @@ A configurable command-line tool for running comprehensive HumanEvalComm V2 benc
 
 For detailed documentation, see [benchmark_v2/README.md](benchmark_v2/README.md).
 
+## Flask Leaderboard Dashboard
+
+An interactive web dashboard for visualizing and exploring HumanEvalComm V2 benchmark results.
+
+### Dashboard Quick Start
+
+```bash
+# Navigate to the dashboard directory
+cd flask_leaderboard
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the dashboard (automatically finds results in benchmark_v2/)
+python app.py
+
+# Visit http://localhost:8080
+```
+
+### Dashboard Features
+
+- **Interactive Leaderboards**: Sortable tables with model performance metrics
+- **Beautiful Charts**: Radar plots, bar charts, and heatmaps powered by Plotly
+- **Detailed Analysis**: Deep-dive into individual model evaluations and problem analysis
+- **Configurable Data Directory**: Set `HUMANEVAL_DATA_DIR` environment variable to use custom result locations
+- **Real-time Updates**: Automatically loads the latest benchmark results
+
+### Dashboard Configuration
+
+By default, the dashboard looks for results in the `benchmark_v2/` directory. To use a different location:
+
+```bash
+# Use custom data directory
+export HUMANEVAL_DATA_DIR="/path/to/your/results"
+python app.py
+```
+
+For detailed documentation, see [flask_leaderboard/README.md](flask_leaderboard/README.md).
+
 ## Reference
-Please consider citing this paper if you find this useful: 
+
+Please consider citing this paper if you find this useful:
 
 Wu, Jie JW, and Fatemeh H. Fard. "HumanEvalComm: Benchmarking the Communication Competence of Code Generation for LLMs and LLM Agent." ACM Trans. Softw. Eng. Methodol. (2025).
-```
+
+```bibtex
 @article{Wu2025HumanEvalComm,
   author = {Wu, Jie JW and Fard, Fatemeh H.},
   title = {HumanEvalComm: Benchmarking the Communication Competence of Code Generation for LLMs and LLM Agent},
