@@ -82,7 +82,25 @@ data = requests.get('http://localhost:8080/api/data').json()
 charts = requests.get('http://localhost:8080/api/charts').json()
 ```
 
-## ⚙️ Customization
+## ⚙️ Configuration
+
+### Data Directory
+
+By default, the leaderboard looks for benchmark results in the `benchmark_v2/` directory. You can customize this by setting the `HUMANEVAL_DATA_DIR` environment variable:
+
+```bash
+# Use a custom data directory
+export HUMANEVAL_DATA_DIR="/path/to/your/benchmark/results"
+python app.py
+
+# Or run directly
+HUMANEVAL_DATA_DIR="/path/to/your/benchmark/results" python app.py
+```
+
+The application expects these files in your data directory:
+
+- `v2_*leaderboard*.csv` (main results table)
+- `v2_*results*.json` (detailed evaluation data)
 
 ### Data Location
 

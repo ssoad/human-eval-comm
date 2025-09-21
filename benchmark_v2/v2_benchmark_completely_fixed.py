@@ -8,7 +8,7 @@ This script fixes ALL remaining issues:
 3. API rate limiting - robust handling for free tier
 4. Realistic metrics - all values differentiated and meaningful
 
-Usage: python v2_benchmark_completely_fixed.py
+Usage: python v2_benchmark_completely_fixed.py [options]
 """
 
 import os
@@ -22,6 +22,7 @@ from dataclasses import dataclass
 import pandas as pd
 import logging
 import sys
+import argparse
 
 # Add project root to path
 sys.path.append('.')
@@ -164,11 +165,11 @@ class V2BenchmarkFixed:
                         break
                     problems.append(json.loads(line.strip()))
             
-            logger.info(f"📚 Loaded {len(problems)} problems")
+            logger.info(f"📚 Loaded {len(problems)} problems from {dataset_path}")
             return problems
         
         except Exception as e:
-            logger.error(f"❌ Error loading dataset: {e}")
+            logger.error(f"❌ Error loading dataset from {dataset_path}: {e}")
             return []
     
     def extract_code_from_response(self, response: str) -> str:
@@ -880,9 +881,14 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
         
         return df
     
-    def save_fixed_results(self, results: List[EvaluationResult], leaderboard_df: pd.DataFrame):
+    def save_fixed_results(self, results: List[EvaluationResult],
+                           leaderboard_df: pd.DataFrame,
+                           output_dir: str = "."):
         """Save fixed results."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
         
         # Save detailed results
         results_data = []
@@ -916,12 +922,14 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 'timestamp': result.timestamp
             })
 
-        json_file = f'v2_fixed_results_{timestamp}.json'
+        json_file = os.path.join(output_dir,
+                                  f'v2_fixed_results_{timestamp}.json')
         with open(json_file, 'w') as f:
             json.dump(results_data, f, indent=2)
         
         # Save leaderboard
-        leaderboard_file = f'v2_fixed_leaderboard_{timestamp}.csv'
+        leaderboard_file = os.path.join(output_dir,
+                                        f'v2_fixed_leaderboard_{timestamp}.csv')
         leaderboard_df.to_csv(leaderboard_file, index=False)
         
         logger.info(f"💾 Results saved to: {json_file}")
@@ -930,33 +938,77 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
         return json_file, leaderboard_file
 
 
+def create_model_configs(model_specs: List[str]) -> Dict[str, ModelConfig]:
+    """Create model configurations from string specifications."""
+    models = {}
+    
+    for spec in model_specs:
+        # Parse format: name:model_id:provider:max_tokens:temperature
+        parts = spec.split(':')
+        if len(parts) < 2:
+            logger.error(f"Invalid model spec: {spec}. Expected format: name:model_id[:provider][:max_tokens][:temperature]")
+            continue
+            
+        name = parts[0]
+        model_id = parts[1]
+        provider = parts[2] if len(parts) > 2 else ""
+        max_tokens = int(parts[3]) if len(parts) > 3 else 1024
+        temperature = float(parts[4]) if len(parts) > 4 else 0.1
+        
+        models[name] = ModelConfig(
+            name=name,
+            model_id=model_id,
+            provider=provider,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+    
+    return models
+
+
 async def main():
     """Main function - completely fixed V2 benchmark."""
+    parser = argparse.ArgumentParser(description='HumanEvalComm V2 Benchmark')
+    parser.add_argument('--dataset-path', type=str, default='Benchmark/HumanEvalComm.jsonl',
+                       help='Path to the dataset file')
+    parser.add_argument('--output-dir', type=str, default='.',
+                       help='Directory to save results')
+    parser.add_argument('--models', nargs='+', required=True,
+                       help='Model specifications in format: name:model_id[:provider][:max_tokens][:temperature]')
+    parser.add_argument('--max-problems', type=int, default=3,
+                       help='Maximum number of problems to evaluate')
+    parser.add_argument('--request-delay', type=float, default=6.0,
+                       help='Delay between API requests in seconds')
+    parser.add_argument('--verbose', action='store_true',
+                       help='Enable verbose logging')
+    
+    args = parser.parse_args()
+    
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    
     print("🚀 HumanEvalComm V2 Completely Fixed Benchmark")
     print("=" * 80)
+    print(f"Dataset: {args.dataset_path}")
+    print(f"Output Directory: {args.output_dir}")
+    print(f"Models: {len(args.models)}")
+    print(f"Max Problems: {args.max_problems}")
+    print(f"Request Delay: {args.request_delay}s")
     
-    # Initialize with longer delay for free API
-    benchmark = V2BenchmarkFixed(request_delay=6.0)
+    # Initialize with configurable delay
+    benchmark = V2BenchmarkFixed(request_delay=args.request_delay)
     
     # Load dataset
-    problems = benchmark.load_dataset(max_problems=3)  # Start small for testing
+    problems = benchmark.load_dataset(args.dataset_path, args.max_problems)
     if not problems:
         logger.error("No problems loaded! Exiting.")
         return
     
-    # Define models for cross-evaluation
-    models = {
-        'llama3-8b': ModelConfig(
-            name="Llama-3.1-8B-Instruct",
-            model_id="meta-llama/Llama-3.1-8B-Instruct",
-            provider="cerebras"
-        ),
-        'qwen-coder': ModelConfig(
-            name="Qwen2.5-Coder-32B-Instruct",
-            model_id="Qwen/Qwen2.5-Coder-32B-Instruct",
-            provider="together"
-        ),
-    }
+    # Create model configurations
+    models = create_model_configs(args.models)
+    if not models:
+        logger.error("No valid models specified! Exiting.")
+        return
     
     print(f"🎯 FIXED V2 Features:")
     print(f"   ✅ Fixed test case execution")
@@ -975,7 +1027,7 @@ async def main():
     leaderboard_df = benchmark.generate_fixed_leaderboard(results)
     
     # Save results
-    json_file, leaderboard_file = benchmark.save_fixed_results(results, leaderboard_df)
+    json_file, leaderboard_file = benchmark.save_fixed_results(results, leaderboard_df, args.output_dir)
     
     # Display leaderboard
     print("\n🏆 HumanEvalComm V2 COMPLETELY FIXED Benchmark Leaderboard")

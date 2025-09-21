@@ -14,15 +14,16 @@ class LeaderboardManager:
 
     def __init__(self):
         self.base_dir = Config.BASE_DIR
+        self.data_dir = Config.DATA_DIR
         self.cache = {}
         self.cache_time = {}
 
     def find_latest_files(self):
         """Find the latest leaderboard and results files."""
         # Look for V2 leaderboard files
-        leaderboard_pattern = os.path.join(self.base_dir,
+        leaderboard_pattern = os.path.join(self.data_dir,
                                            Config.LEADERBOARD_PATTERN)
-        results_pattern = os.path.join(self.base_dir,
+        results_pattern = os.path.join(self.data_dir,
                                        Config.RESULTS_PATTERN)
 
         leaderboard_files = glob.glob(leaderboard_pattern)

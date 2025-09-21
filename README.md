@@ -213,6 +213,36 @@ Async LLM      Static Analysis         Safe Execution   Confidence   Composite
 Evaluation     + Dynamic Testing       + Monitoring     Calibration  Scoring
 ```
 
+## V2 Benchmark Runner
+
+A configurable command-line tool for running comprehensive HumanEvalComm V2 benchmarks with multiple models and evaluation metrics.
+
+### Quick Start
+
+```bash
+# Run with default settings (2 models, 3 problems)
+./run_v2_benchmark.sh
+
+# Run with custom models and output directory
+./run_v2_benchmark.sh --models "gpt4:gpt-4:openai" \
+                      --models "claude:claude-3-sonnet:anthropic" \
+                      --output-dir ./my_results \
+                      --max-problems 10
+
+# Run with custom dataset
+./run_v2_benchmark.sh --dataset-path ./custom_dataset.jsonl --verbose
+```
+
+### Features
+
+- **Multi-Model Evaluation**: Cross-evaluate models as both generators and judges
+- **Configurable Parameters**: Dataset path, models, output directory, problem count, API delays
+- **Comprehensive Metrics**: V2 composite scores, communication rates, test pass rates, security analysis
+- **Robust API Handling**: Rate limiting, retries, and error recovery
+- **Timestamped Results**: Automatic result versioning and organization
+
+For detailed documentation, see [benchmark_v2/README.md](benchmark_v2/README.md).
+
 ## Reference
 Please consider citing this paper if you find this useful: 
 
