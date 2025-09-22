@@ -180,7 +180,7 @@ if __name__ == "__main__":
     print("1. Check the generated JSON and CSV files")
     print("2. Try modifying the code and running again")
     print("3. Experiment with different evaluation weights")
-    print("4. Read README_Evaluators.md for advanced usage")
+    print("4. Read README.md for advanced usage")
 
 
 if __name__ == "__main__":

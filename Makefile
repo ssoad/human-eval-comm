@@ -93,8 +93,7 @@ lint: ## Run linting
 docs: ## Generate documentation
 	@echo "📚 Generating documentation..."
 	@echo "Documentation is available in:"
-	@echo "  - README_Evaluators.md (comprehensive guide)"
-	@echo "  - QUICKSTART.md (quick start guide)"
+	@echo "  - README.md (comprehensive guide)"
 	@echo "  - example_usage.py (code examples)"
 
 # Development commands

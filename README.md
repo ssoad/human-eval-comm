@@ -158,7 +158,21 @@ This code is heavily influenced by the Nondeterminism evaluation research of Cha
 
 ## V2 Evaluators Framework
 
-We have implemented a comprehensive V2 Evaluators Framework that provides multi-dimensional evaluation of AI-generated code quality. This framework goes beyond traditional test pass rates to include:
+<div align="center">
+
+<img src="https://img.shields.io/badge/Python-3.8+-blue.svg" alt="Python 3.8+">
+<img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
+<img src="https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg" alt="Status: Production Ready">
+
+<br></br>
+
+**A comprehensive framework for evaluating AI-generated code quality through multiple complementary approaches**
+
+</div>
+
+### Overview
+
+The V2 Evaluators Framework provides multi-dimensional evaluation of AI-generated code quality beyond traditional test pass rates:
 
 - **Multi-LLM Judges**: Structured evaluation from multiple language models
 - **Static Analysis**: Code quality, security, and complexity metrics using Pylint, Bandit, Radon, and MyPy
@@ -167,7 +181,7 @@ We have implemented a comprehensive V2 Evaluators Framework that provides multi-
 - **Confidence Calibration**: Calibrated confidence scores based on human annotations using scikit-learn
 - **Composite Scoring**: Weighted aggregation of all metrics with configurable weights
 
-### Quick Start with V2 Evaluators
+### Quick Start
 
 **🚀 Super Easy Setup (Recommended):**
 ```bash
@@ -181,7 +195,6 @@ make evaluate CODE='def add(a,b): return a+b'  # Evaluate code instantly
 ```
 
 **📚 Quick Start Guide:**
-- [QUICKSTART.md](QUICKSTART.md) - Get running in 5 minutes
 - [example_usage.py](example_usage.py) - Simple code examples
 - [evaluate_code.py](evaluate_code.py) - Command-line evaluation tool
 
@@ -192,8 +205,8 @@ pip install -r requirements_v2.txt
 
 # Set API keys (at least one required)
 export OPENAI_API_KEY="your-key"
-export ANTHROPIC_API_KEY="your-key"
-export GEMINI_API_KEY="your-key"
+export ANTHROPIC_API_KEY="your-anthropic-key"
+export GEMINI_API_KEY="your-gemini-key"
 
 # Run the evaluators test suite
 python test_evaluators.py
@@ -202,15 +215,125 @@ python test_evaluators.py
 python -m pytest tests/ -v
 ```
 
-For detailed documentation, see [README_Evaluators.md](README_Evaluators.md).
-
-### Framework Architecture
+### Architecture
 
 ```
 MultiLLMJudge → AutomatedStaticDynamic → SandboxRunner → Calibration → Aggregator
      ↓              ↓                      ↓              ↓            ↓
 Async LLM      Static Analysis         Safe Execution   Confidence   Composite
 Evaluation     + Dynamic Testing       + Monitoring     Calibration  Scoring
+```
+
+### Key Components
+
+#### 1. MultiLLMJudge
+Orchestrates multiple LLM judges for code evaluation with asynchronous API calls, structured JSON parsing, and consensus scoring.
+
+#### 2. AutomatedStaticDynamic
+Performs comprehensive static analysis (Pylint, Bandit, Radon, MyPy) and dynamic testing (Pytest, Hypothesis).
+
+#### 3. SandboxRunner
+Executes code safely with Docker containerization, resource limits, and monitoring.
+
+#### 4. Calibration
+Calibrates LLM confidence scores using isotonic/logistic regression based on human annotations.
+
+#### 5. Aggregator
+Combines all metrics into composite scores with configurable weights (default: Test Pass Rate 25%, LLM Consensus 20%, Static Analysis 15%, Security 15%, Readability 10%, Resource Efficiency 10%, Complexity Penalty 5%).
+
+### Usage Example
+
+```python
+from evaluators import MultiLLMJudge, AutomatedStaticDynamic, SandboxRunner, Aggregator
+
+# Initialize evaluators
+judge = MultiLLMJudge()
+analyzer = AutomatedStaticDynamic()
+runner = SandboxRunner(use_docker=False)
+aggregator = Aggregator()
+
+# Evaluate code
+code = "def fibonacci(n): return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)"
+test_code = "def test_fibonacci(): assert fibonacci(5) == 5"
+
+static_results, dynamic_results = analyzer.analyze_code(code, test_code)
+execution_result = runner.run_code(code, test_code)
+
+evaluation = aggregator.evaluate_problem(
+    problem_id="fibonacci_test",
+    test_results=dynamic_results,
+    static_results=static_results,
+    sandbox_results=execution_result
+)
+
+print(f"Composite Score: {evaluation.composite_score:.2f}/10")
+```
+
+### Configuration
+
+Configure LLM models in `config.yaml`:
+```yaml
+judge_models:
+  - name: "gpt-4"
+    api_key: "${OPENAI_API_KEY}"
+    model: "gpt-4"
+  - name: "claude-3-sonnet"
+    api_key: "${ANTHROPIC_API_KEY}"
+    model: "claude-3-sonnet-20240229"
+  - name: "gemini-pro"
+    api_key: "${GEMINI_API_KEY}"
+    model: "gemini-pro"
+```
+
+## Hugging Face Benchmark Implementation
+
+A comprehensive Jupyter notebook implementation of the HumanEvalComm V2 benchmark using Hugging Face models for multi-dimensional code generation evaluation.
+
+### Features
+
+- **Multi-dimensional evaluation** (Communication, Correctness, Trustworthiness, Reliability)
+- **Hugging Face model integration** with quantization for efficiency
+- **Comprehensive metrics calculation** including V2 composite scoring
+- **Interactive visualizations** with Plotly dashboards
+- **Export capabilities** for results and reports
+
+### Supported Models
+- DeepSeek Coder (6.7B, 1.3B variants)
+- CodeLlama (7B, 13B variants)
+- StarCoder2 (7B)
+- Other Hugging Face code models
+
+### Quick Start
+
+```bash
+# Install required packages
+pip install transformers torch datasets evaluate plotly pandas numpy scikit-learn
+
+# Open notebook
+jupyter notebook HumanEval_HF_Benchmark_Notebook.ipynb
+```
+
+### Key Metrics
+
+- **Communication Rate**: % of problems where model asks clarifying questions
+- **Code Correctness**: Pass@1 and test execution rates
+- **Trustworthiness**: Readability, security, maintainability
+- **Reliability**: Efficiency and robustness metrics
+- **V2 Composite Score**: Weighted combination of all metrics
+
+### Usage
+
+```python
+from hf_benchmark import BenchmarkEvaluator, BenchmarkConfig
+
+config = BenchmarkConfig(
+    dataset_path="Benchmark/HumanEvalComm.jsonl",
+    models=["deepseek-ai/deepseek-coder-6.7b-instruct"],
+    max_problems=50
+)
+
+evaluator = BenchmarkEvaluator(config)
+results = evaluator.run_benchmark()
 ```
 
 ## V2 Benchmark Runner

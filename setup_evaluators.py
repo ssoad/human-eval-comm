@@ -177,7 +177,7 @@ def main():
 
     print("\n🎉 Setup completed successfully!")
     print("\n📚 Next steps:")
-    print("1. Read README_Evaluators.md for detailed usage")
+    print("1. Read README.md for detailed usage")
     print("2. Try running: python -m pytest tests/ -v")
     print("3. Start evaluating code with the V2 framework!")
 
