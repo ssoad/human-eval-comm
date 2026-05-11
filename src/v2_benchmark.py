@@ -844,8 +844,9 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
         
         try:
             # We use the same client to answer the question, but could theoretically use a fixed stronger model like GPT-4
-            response = self.client.chat.completions.create(
-                model=model_config.name,
+            client = self.get_client(model_config.provider)
+            response = client.chat.completions.create(
+                model=model_config.model_id,
                 messages=messages,
                 max_tokens=256,
                 temperature=0.1
@@ -1007,8 +1008,8 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 routing_rate = 0
                 fail_fast_score = 0
             
-            code_results = [r for r in model_results if not r.is_question and r.extracted_code]
-            
+            # Include all results that have extracted code, even if they asked a question first
+            code_results = [r for r in model_results if r.extracted_code]            
             if code_results:
                 # FIXED: All metrics calculations
                 pass_at_1 = sum(1 for r in code_results if r.execution_success) / len(code_results) * 100
