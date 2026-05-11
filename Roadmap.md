@@ -18,9 +18,9 @@ This document outlines the strategic roadmap for upgrading the **HumanEvalComm V
 ### 1.2 Multi-Turn Communication Loop
 **Motivation**: The current V2 framework evaluates communication in a single turn (Agent asks $\rightarrow$ Evaluator answers). Real-world requirement gathering is a messy, multi-turn dialogue.
 **Action Items**:
-- [ ] Refactor the 3-round structure in `v2_benchmark.py` into a dynamic `while` loop (capped at `MAX_TURNS`).
-- [ ] Prompt the LLM-as-a-judge to occasionally provide partial, vague, or incomplete answers.
-- [ ] Evaluate if the agent persists and asks follow-up questions until the ambiguity is fully resolved.
+- [x] Refactor the 3-round structure in `v2_benchmark.py` into a dynamic `while` loop (capped at `MAX_TURNS`).
+- [x] Prompt the LLM-as-a-judge to occasionally provide partial, vague, or incomplete answers.
+- [x] Evaluate if the agent persists and asks follow-up questions until the ambiguity is fully resolved.
 **Paper Contribution**: Evaluates conversational persistence and the ability of an LLM to navigate layered ambiguity.
 
 ### 1.3 Human-in-the-Loop Validation UI

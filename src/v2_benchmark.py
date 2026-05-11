@@ -88,12 +88,15 @@ class EvaluationResult:
     formula_used: str = ""
     penalties_applied: Dict[str, float] = None
     bonuses_applied: Dict[str, float] = None
+    clarifying_questions: List[str] = None
     
     def __post_init__(self):
         if self.penalties_applied is None:
             self.penalties_applied = {}
         if self.bonuses_applied is None:
             self.bonuses_applied = {}
+        if self.clarifying_questions is None:
+            self.clarifying_questions = []
 
 
 class V2BenchmarkFixed:
@@ -722,9 +725,42 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
             result.error_message = f"Evaluation failed: {e}"
             logger.error(f"Evaluation failed: {e}")
     
+    async def generate_answer(self, model_config: ModelConfig, problem: Dict, question: str) -> str:
+        """Use the model to act as a Product Manager and answer the clarifying question."""
+        original_prompt = problem.get('prompt', '')
+        solution = problem.get('solution', '')
+        
+        system_prompt = (
+            "You are a Product Manager answering questions from a developer about a programming task.\n"
+            "Here is the complete and correct requirement:\n"
+            f"```python\n{original_prompt}\n```\n"
+            "And here is the intended solution logic:\n"
+            f"```python\n{solution}\n```\n"
+            "Answer the developer's question directly and concisely based on this information. "
+            "Do not write code for them, just answer their conceptual questions."
+        )
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": question}
+        ]
+        
+        try:
+            # We use the same client to answer the question, but could theoretically use a fixed stronger model like GPT-4
+            response = self.client.chat.completions.create(
+                model=model_config.name,
+                messages=messages,
+                max_tokens=256,
+                temperature=0.1
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error generating answer: {e}")
+            return "Please follow the standard behavior for such problems as best as you can."
+
     async def evaluate_problem_fixed(self, problem: Dict, model_config: ModelConfig,
                             prompt_type: str = 'prompt', judge_models: List[ModelConfig] = None) -> EvaluationResult:
-        """Fixed problem evaluation."""
+        """Fixed problem evaluation with Multi-Turn loop."""
         result = EvaluationResult(
             problem_id=problem['name'],
             model_name=model_config.name,
@@ -740,29 +776,46 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 result.error_message = f"Prompt type '{prompt_type}' not found"
                 return result
 
-            prompt = problem[prompt_type]
-            response = await self.generate_code(model_config, prompt)
-
-            if response is None:
-                result.error_message = "Failed to generate response"
-                return result
-
-            result.raw_response = response
+            current_prompt = problem[prompt_type]
+            conversation_history = ""
+            MAX_TURNS = 3
             
-            # FIXED: Question detection
-            result.is_question = self.is_question(response)
-            result.communication_rate = 1.0 if result.is_question else 0.0
+            for turn in range(MAX_TURNS):
+                prompt_to_send = current_prompt + conversation_history
+                response = await self.generate_code(model_config, prompt_to_send)
 
-            if not result.is_question:
-                result.extracted_code = self.extract_code_from_response(response)
+                if response is None:
+                    result.error_message = "Failed to generate response"
+                    return result
 
-                if result.extracted_code:
-                    await self.evaluate_code_fixed(result, problem, judge_models)
+                result.raw_response = response
+                is_question = self.is_question(response)
+                
+                if is_question:
+                    result.is_question = True
+                    result.communication_rate = 1.0
+                    result.clarifying_questions.append(response)
+                    
+                    # Score quality on the first question
+                    if turn == 0:
+                        result.question_quality = self.evaluate_question_quality(response)
+                        
+                    # Generate an answer
+                    answer = await self.generate_answer(model_config, problem, response)
+                    
+                    # Append to history and continue loop
+                    conversation_history += f"\n\nQuestion asked: {response}\nAnswer received: {answer}\n\nPlease proceed to write the code based on these clarifications."
                 else:
-                    result.error_message = "No code extracted from response"
-            else:
-                # FIXED: Question quality scoring
-                result.question_quality = self.evaluate_question_quality(response)
+                    # Code was generated
+                    result.extracted_code = self.extract_code_from_response(response)
+
+                    if result.extracted_code:
+                        await self.evaluate_code_fixed(result, problem, judge_models)
+                    else:
+                        result.error_message = "No code extracted from response"
+                    
+                    # Break out of the turn loop
+                    break
 
         except Exception as e:
             result.error_message = str(e)
