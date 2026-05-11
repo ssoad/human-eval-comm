@@ -53,9 +53,9 @@ This document outlines the strategic roadmap for upgrading the **HumanEvalComm V
 ### 2.3 Proactive "Fail-Fast" Metrics
 **Motivation**: LLMs waste significant compute generating long blocks of hallucinated code for broken prompts before realizing they should have asked a question. 
 **Action Items**:
-- [ ] Integrate token and time tracking into the generation phase.
-- [ ] Introduce a **Compute-to-Question** metric (or Time-to-Question).
-- [ ] Update the `V2Score` to penalize models that waste massive amounts of tokens before initiating communication.
+- [x] Integrate token and time tracking into the generation phase.
+- [x] Introduce a **Compute-to-Question** metric (or Time-to-Question).
+- [x] Update the `V2Score` to penalize models that waste massive amounts of tokens before initiating communication.
 **Paper Contribution**: Introduces efficiency into communication evaluation, rewarding models that recognize flawed requirements early ("failing fast").
 
 ---

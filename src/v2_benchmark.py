@@ -90,6 +90,7 @@ class EvaluationResult:
     bonuses_applied: Dict[str, float] = None
     clarifying_questions: List[str] = None
     is_pushback: bool = False
+    tokens_to_question: int = 0
     
     def __post_init__(self):
         if self.penalties_applied is None:
@@ -538,7 +539,7 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
             logger.error(f"Multi-LLM judging failed: {e}")
             return None
     
-    async def generate_code(self, model_config: ModelConfig, prompt: str) -> Optional[str]:
+    async def generate_code(self, model_config: ModelConfig, prompt: str) -> Optional[tuple]:
         """Generate code with robust retry logic."""
         max_retries = 3
         base_delay = 5
@@ -572,7 +573,9 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                     )
                 )
 
-                return completion.choices[0].message.content.strip()
+                content = completion.choices[0].message.content.strip()
+                tokens = completion.usage.completion_tokens if hasattr(completion, 'usage') and hasattr(completion.usage, 'completion_tokens') and completion.usage.completion_tokens else len(content) // 4
+                return content, tokens
 
             except Exception as e:
                 error_str = str(e)
@@ -800,11 +803,13 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
             
             for turn in range(MAX_TURNS):
                 prompt_to_send = current_prompt + conversation_history
-                response = await self.generate_code(model_config, prompt_to_send)
+                gen_result = await self.generate_code(model_config, prompt_to_send)
 
-                if response is None:
+                if gen_result is None:
                     result.error_message = "Failed to generate response"
                     return result
+                
+                response, tokens = gen_result
 
                 result.raw_response = response
                 is_question = self.is_question(response)
@@ -812,12 +817,14 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 
                 if pushback:
                     result.is_pushback = True
+                    result.tokens_to_question = tokens
                     result.extracted_code = ""
                     result.error_message = "Agent correctly pushed back on unfeasible prompt."
                     result.execution_success = True
                     break
                 elif is_question:
                     result.is_question = True
+                    result.tokens_to_question = tokens
                     result.communication_rate = 1.0
                     result.clarifying_questions.append(response)
                     
@@ -914,8 +921,11 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
             question_results = [r for r in model_results if r.is_question]
             if question_results:
                 good_q_rate = sum(r.question_quality for r in question_results) / len(question_results) * 100
+                avg_tokens_to_question = sum(getattr(r, 'tokens_to_question', 0) for r in question_results) / len(question_results)
+                fail_fast_score = max(0, 100 - (avg_tokens_to_question / 10))
             else:
                 good_q_rate = 0
+                fail_fast_score = 0
             
             code_results = [r for r in model_results if not r.is_question and r.extracted_code]
             
@@ -961,6 +971,7 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 'Pushback Rate': f"{pushback_rate:.0f}%",
                 'Comm Rate': f"{comm_rate:.0f}%",
                 'Good Q Rate': f"{good_q_rate:.0f}%",
+                'FailFast': f"{fail_fast_score:.0f}",
                 'Pass@1': f"{pass_at_1:.0f}%",
                 'Test Pass': f"{test_pass:.0f}%",
                 'Readability': f"{readability:.0f}",
