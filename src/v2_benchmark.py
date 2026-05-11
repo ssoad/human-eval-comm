@@ -91,6 +91,7 @@ class EvaluationResult:
     clarifying_questions: List[str] = None
     is_pushback: bool = False
     tokens_to_question: int = 0
+    routing_persona: str = ""
     
     def __post_init__(self):
         if self.penalties_applied is None:
@@ -176,7 +177,11 @@ class V2BenchmarkFixed:
             raise ValueError(f"❌ Unsupported API provider: {api_provider}. Supported: huggingface, openrouter")
     
     def load_dataset(self, dataset_path: str = "data/benchmark/HumanEvalComm.jsonl", max_problems: int = 3) -> List[Dict]:
-        """Load HumanEvalComm dataset."""
+        """Load HumanEvalComm or SWE-bench dataset."""
+        if dataset_path == "swe-bench-lite":
+            from datasets.swe_bench_comm import load_swe_bench_lite
+            return load_swe_bench_lite(max_problems)
+            
         problems = []
         
         try:
@@ -234,9 +239,16 @@ class V2BenchmarkFixed:
             return '\n'.join(def_lines).strip()
         
         return ""
+    
     def is_pushback(self, response: str) -> bool:
-        """Detect if the response is pushing back on unfeasible or unsafe requirements."""
+        """Detect if the response is pushing back on unfeasible or unsafe requirements.
+        Two-stage check: must contain pushback keywords AND must NOT contain a code block.
+        This prevents false positives from responses that mention 'not possible' but still provide code."""
         if not response or len(response.strip()) == 0:
+            return False
+        
+        # Stage 1: If the response contains a code block, it's likely an attempt at a solution, not a pushback
+        if '```' in response or 'def ' in response:
             return False
             
         response_lower = response.lower()
@@ -244,9 +256,24 @@ class V2BenchmarkFixed:
             'unfeasible', 'not possible', 'cannot be done', 'impossible',
             'too large for memory', 'security risk', 'insecure', 'anti-pattern',
             'not recommended', 'vulnerability', 'instead, i recommend',
-            'i cannot', 'i will not', 'bad practice', 'not feasible'
+            'i cannot', 'i will not', 'bad practice', 'not feasible',
+            'violates', 'unethical', 'cannot comply', 'refuse to',
+            'np-hard', 'np-complete', 'undecidable', 'halting problem'
         ]
+        # Stage 2: Check for pushback language
         return any(indicator in response_lower for indicator in pushback_indicators)
+    
+    def detect_routing_persona(self, response: str) -> str:
+        """Detect which persona the agent routed its question to."""
+        if '[TO: SeniorReviewer]' in response:
+            return 'SeniorReviewer'
+        elif '[TO: ProductManager]' in response:
+            return 'ProductManager'
+        elif any(kw in response.lower() for kw in ['architecture', 'security', 'performance', 'scalability']):
+            return 'SeniorReviewer'
+        elif any(kw in response.lower() for kw in ['requirement', 'feature', 'user story', 'business']):
+            return 'ProductManager'
+        return 'Unrouted'
 
     def is_question(self, response: str) -> bool:
         """Fixed question detection."""
@@ -483,8 +510,9 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
             
             for judge_model in judge_models:
                 try:
-                    judge_response = await self.generate_code(judge_model, evaluation_prompt)
-                    if judge_response:
+                    gen_result = await self.generate_code(judge_model, evaluation_prompt)
+                    if gen_result:
+                        judge_response, _ = gen_result
                         import re
                         # Try to extract JSON
                         json_match = re.search(r'\{[^}]*"score"[^}]*\}', judge_response, re.DOTALL)
@@ -595,18 +623,31 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                                  judge_models: List[ModelConfig] = None):
         """Completely fixed evaluation pipeline."""
         try:
-            # Code execution
-            exec_result = self.simple_code_execution(result.extracted_code, "")
-            result.execution_success = exec_result['success']
-            result.execution_time = exec_result['execution_time']
-            result.memory_usage = exec_result.get('memory_used', 0.0)
-
-            # FIXED: Test case execution
-            if result.extracted_code and result.execution_success:
-                passed_tests, total_tests = self.run_test_cases_fixed(result.extracted_code, problem)
-                test_pass_percentage = (passed_tests / total_tests * 100) if total_tests > 0 else 0
+            if problem.get('repo_level'):
+                # FRAMEWORK EXTENSION: SWE-bench repo-level evaluation is a structural integration point.
+                # Communication metrics (questions, pushback, routing) are fully evaluated.
+                # Code execution/test pass metrics are placeholder values below; full evaluation requires
+                # the SWE-bench Docker harness (see: https://github.com/princeton-nlp/SWE-bench).
+                # TODO: Integrate swebench.harness.run_evaluation for end-to-end repo-level grading.
+                exec_result = {'success': True, 'execution_time': 0.1, 'memory_used': 0.0}
+                test_pass_percentage = 0.0  # Placeholder — not evaluated without Docker harness
+                
+                result.execution_success = True
+                result.execution_time = 0.1
+                result.memory_usage = 0.0
             else:
-                test_pass_percentage = 0
+                # Standard HumanEval code execution
+                exec_result = self.simple_code_execution(result.extracted_code, "")
+                result.execution_success = exec_result['success']
+                result.execution_time = exec_result['execution_time']
+                result.memory_usage = exec_result.get('memory_used', 0.0)
+    
+                # FIXED: Test case execution
+                if result.extracted_code and result.execution_success:
+                    passed_tests, total_tests = self.run_test_cases_fixed(result.extracted_code, problem)
+                    test_pass_percentage = (passed_tests / total_tests * 100) if total_tests > 0 else 0
+                else:
+                    test_pass_percentage = 0
 
             # V2 Multi-LLM Judging
             if judge_models and len(judge_models) > 0 and result.extracted_code:
@@ -826,6 +867,7 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                     result.is_question = True
                     result.tokens_to_question = tokens
                     result.communication_rate = 1.0
+                    result.routing_persona = self.detect_routing_persona(response)
                     result.clarifying_questions.append(response)
                     
                     # Score quality on the first question
@@ -923,8 +965,11 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 good_q_rate = sum(r.question_quality for r in question_results) / len(question_results) * 100
                 avg_tokens_to_question = sum(getattr(r, 'tokens_to_question', 0) for r in question_results) / len(question_results)
                 fail_fast_score = max(0, 100 - (avg_tokens_to_question / 10))
+                routed = sum(1 for r in question_results if getattr(r, 'routing_persona', '') not in ('', 'Unrouted'))
+                routing_rate = (routed / len(question_results) * 100) if question_results else 0
             else:
                 good_q_rate = 0
+                routing_rate = 0
                 fail_fast_score = 0
             
             code_results = [r for r in model_results if not r.is_question and r.extracted_code]
@@ -972,6 +1017,7 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 'Comm Rate': f"{comm_rate:.0f}%",
                 'Good Q Rate': f"{good_q_rate:.0f}%",
                 'FailFast': f"{fail_fast_score:.0f}",
+                'Routing': f"{routing_rate:.0f}%",
                 'Pass@1': f"{pass_at_1:.0f}%",
                 'Test Pass': f"{test_pass:.0f}%",
                 'Readability': f"{readability:.0f}",

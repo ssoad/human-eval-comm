@@ -15,3 +15,7 @@ docker
 pandas
 numpy
 pyyaml
+scipy
+flask
+openai
+datasets    # optional: SWE-bench integration

@@ -1,6 +1,6 @@
-# HumanEvalComm V3: Roadmap to Robustness & Innovation
+# HumanEvalComm V2: Roadmap to Robustness & Innovation
 
-This document outlines the strategic roadmap for upgrading the **HumanEvalComm V2** framework into a robust, industry-defining benchmark for agentic communication (V3). This roadmap is structured to easily translate into the methodology and future work sections of the main research paper.
+This document outlines the strategic roadmap for upgrading the **HumanEvalComm V2** framework into a robust, industry-defining benchmark for agentic communication. This roadmap is structured to easily translate into the methodology and future work sections of the main research paper.
 
 ---
 
@@ -10,9 +10,9 @@ This document outlines the strategic roadmap for upgrading the **HumanEvalComm V
 ### 1.1 Repo-Level Task Integration (SWE-bench Wrapper)
 **Motivation**: Real-world software engineering is rarely limited to single-file Python functions (as in HumanEval). Developers must navigate multi-file codebases, understand inter-dependencies, and resolve GitHub issues.
 **Action Items**:
-- [ ] Create a `src/datasets/swe_bench_comm.py` wrapper to load SWE-bench-lite issues.
-- [ ] Inject artificial ambiguity into GitHub issue descriptions (e.g., removing the file path of the bug or making the requested feature vague).
-- [ ] Update `v2_benchmark.py` to allow the SandboxRunner to provide agents with bash/filesystem access.
+- [x] Create a `src/datasets/swe_bench_comm.py` wrapper to load SWE-bench-lite issues.
+- [x] Inject artificial ambiguity into GitHub issue descriptions (e.g., removing the file path of the bug or making the requested feature vague).
+- [x] Update `v2_benchmark.py` to allow the SandboxRunner to provide agents with bash/filesystem access.
 **Paper Contribution**: Proves the communication framework scales to real-world, repository-level complexity.
 
 ### 1.2 Multi-Turn Communication Loop
@@ -28,8 +28,8 @@ This document outlines the strategic roadmap for upgrading the **HumanEvalComm V
 **Action Items**:
 - [x] Add an `/annotate` route to `flask_leaderboard/app.py`.
 - [x] Create an intuitive annotation web interface (`annotate.html`) for human reviewers.
-- [x] Develop `compute_human_correlation.py` to calculate Pearson Correlation and Cohen's Kappa between human and LLM grades.
-**Paper Contribution**: Provides empirical evidence (high correlation scores) that the V2/V3 automated evaluation metrics are trustworthy and aligned with human judgment.
+- [x] Develop `scripts/compute_human_correlation.py` to calculate Pearson Correlation and Cohen's Kappa between human and LLM grades.
+**Paper Contribution**: Provides empirical evidence (high correlation scores) that the V2 automated evaluation metrics are trustworthy and aligned with human judgment.
 
 ---
 

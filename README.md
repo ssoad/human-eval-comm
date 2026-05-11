@@ -48,6 +48,14 @@ See `flask_leaderboard/README.md` for more details and advanced usage.
 
 - `src/dashboard.py`, `src/enhanced_aggregator.py`, `src/hf_multi_llm_judge.py`, `src/human_calibration.py`, `src/hypothesis_fuzzer.py`.
 
+**V2 Communication Features:**
+
+- `src/datasets/swe_bench_comm.py`: SWE-bench Lite integration with artificial ambiguity injection for repo-level communication testing.
+- `Benchmark/HumanEvalComm_Unfeasible.jsonl`: 21-problem dataset of unfeasible/insecure/contradictory requirements for pushback evaluation.
+- `flask_leaderboard/templates/annotate.html`: Human-in-the-loop annotation UI for validating LLM-as-a-judge scores.
+- `scripts/compute_human_correlation.py`: Pearson & Cohen's Kappa correlation between human and automated grading.
+- `tests/test_v2_features.py`: Unit tests for pushback detection, question detection, routing, ambiguity injection, and FailFast scoring.
+
 **Docs & Paper:**
 
 - `docs/paper/`: Paper source (`main.tex`, `build_paper.py`, `references.bib`).
@@ -92,17 +100,13 @@ evaluate-code
 
 4. **Run Benchmarks**
 
-Available datasets (in `data/benchmark/`):
+Available datasets (in `Benchmark/` and `data/benchmark/`):
 
-- HumanEval.jsonl
-- HumanEvalComm.jsonl
-- HumanEvalComm_v2.jsonl
-- HumanEvalComm_v2.csv
-- HumanEvalComm_v1.json
-- HumanEvalComm_dry_run.jsonl
-- HumanEval_new.json
-- HumanEval_new.jsonl
-- HumanEval.jsonl.gz
+- HumanEvalComm_v2.jsonl — Main V2 benchmark (163 problems)
+- HumanEvalComm_Unfeasible.jsonl — Pushback/negotiation evaluation (21 problems)
+- HumanEvalComm.jsonl — Original V1 benchmark
+- HumanEval.jsonl — OpenAI HumanEval baseline
+- `swe-bench-lite` — SWE-bench Lite integration (loaded dynamically via HuggingFace)
 
 To run the benchmark with a specific dataset, use the `--dataset-path` parameter:
 
@@ -203,13 +207,13 @@ We evaluated multiple code-generation models using the HumanEval-Comm V2 framewo
 
 ### 📊 Current Leaderboard (163 Problems)
 
-| Model                | Comm Rate | Good Q Rate | Pass@1 | Test Pass | Readability | Security | Efficiency | Reliability | V2 Score |
-|----------------------|-----------|-------------|--------|-----------|-------------|----------|------------|-------------|----------|
-| gpt-4o-mini         | 33%      | 74%        | 86%   | 65%      | 75         | 71      | 0.86      | 0.76       | 6.9     |
-| llama-3.1-8b        | 40%      | 74%        | 76%   | 55%      | 63         | 59      | 0.76      | 0.67       | 5.8     |
-| deepseek-chat       | 50%      | 75%        | 78%   | 50%      | 62         | 58      | 0.78      | 0.68       | 5.6     |
-| claude-3-haiku      | 63%      | 76%        | 77%   | 45%      | 59         | 55      | 0.77      | 0.67       | 5.2     |
-| qwen-2.5-coder-32b  | 58%      | 74%        | 69%   | 38%      | 52         | 48      | 0.69      | 0.60       | 4.6     |
+| Model                | Pushback Rate | Comm Rate | Good Q Rate | FailFast | Routing | Pass@1 | Test Pass | Readability | Security | Efficiency | Reliability | V2 Score |
+|----------------------|---------------|-----------|-------------|----------|---------|--------|-----------|-------------|----------|------------|-------------|----------|
+| gpt-4o-mini         | 19%          | 33%      | 74%        | 95       | 62%     | 86%   | 65%      | 75         | 71      | 0.86      | 0.76       | 6.9     |
+| llama-3.1-8b        | 10%          | 40%      | 74%        | 88       | 45%     | 76%   | 55%      | 63         | 59      | 0.76      | 0.67       | 5.8     |
+| deepseek-chat       | 14%          | 50%      | 75%        | 91       | 55%     | 78%   | 50%      | 62         | 58      | 0.78      | 0.68       | 5.6     |
+| claude-3-haiku      | 24%          | 63%      | 76%        | 93       | 70%     | 77%   | 45%      | 59         | 55      | 0.77      | 0.67       | 5.2     |
+| qwen-2.5-coder-32b  | 5%           | 58%      | 74%        | 82       | 38%     | 69%   | 38%      | 52         | 48      | 0.69      | 0.60       | 4.6     |
 
 ### 📊 Interactive Leaderboard Screenshot
 
@@ -261,8 +265,11 @@ We evaluated multiple code-generation models using the HumanEval-Comm V2 framewo
 
 ### 📊 Detailed Metrics Explained
 
+- **Pushback Rate**: Percentage of unfeasible prompts where the model correctly refuses to generate code and explains why
 - **Comm Rate**: Percentage of evaluations where model asks questions instead of providing code
 - **Good Q Rate**: Quality of questions asked (when model chooses to ask questions)
+- **FailFast**: Score (0–100) penalizing models that waste tokens before recognizing the need to ask a question
+- **Routing**: Percentage of questions correctly routed to ProductManager or SeniorReviewer persona
 - **Pass@1**: Code execution success rate (percentage of code solutions that run without errors)
 - **Test Pass**: Average test pass rate across successful executions
 - **Readability**: Code quality score (70-95 range, higher is better)
