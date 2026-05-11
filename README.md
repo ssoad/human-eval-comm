@@ -1,5 +1,6 @@
-
 # HumanEval-Comm V2 — Evaluators Framework
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-username/human-eval-comm-v2/blob/main/HumanEvalComm_V2_Colab.ipynb)
 
 This repository provides a modular, reproducible framework for evaluating code-generation systems, with a focus on research and extensibility. It combines static analysis, dynamic testing, sandboxed execution, multi-LLM judgment, and flexible aggregation/calibration.
 

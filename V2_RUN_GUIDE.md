@@ -1,5 +1,7 @@
 # HumanEvalComm V2: The Ultimate Execution & Research Guide
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-username/human-eval-comm-v2/blob/main/HumanEvalComm_V2_Colab.ipynb)
+
 This guide provides an exhaustive reference for running the **HumanEvalComm V2** benchmark suite. Whether you are running local models, cloud APIs, or multi-agent simulations, all commands and flags are detailed below.
 
 ---
