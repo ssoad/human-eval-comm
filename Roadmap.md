@@ -46,8 +46,8 @@ This document outlines the strategic roadmap for upgrading the **HumanEvalComm V
 ### 2.2 Heterogeneous Agent Collaboration (The "Dev Team")
 **Motivation**: Future software development will involve swarms of specialized agents. A Code LLM must know *who* to communicate with.
 **Action Items**:
-- [ ] Create distinct agent personas: `ProductManager` (handles business logic) and `SeniorReviewer` (handles technical architecture).
-- [ ] Implement a routing mechanism in `v2_benchmark.py` where the primary agent must decide which persona to query based on the ambiguity.
+- [x] Create distinct agent personas: `ProductManager` (handles business logic) and `SeniorReviewer` (handles technical architecture).
+- [x] Implement a routing mechanism in `v2_benchmark.py` where the primary agent must decide which persona to query based on the ambiguity.
 **Paper Contribution**: Introduces multi-agent collaboration metrics, evaluating an LLM's ability to navigate organizational roles to gather requirements.
 
 ### 2.3 Proactive "Fail-Fast" Metrics

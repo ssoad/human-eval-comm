@@ -552,7 +552,7 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 messages = [
                     {
                         "role": "system",
-                        "content": "You are an expert software developer. Generate Python code or ask clarifying questions if the requirements are unclear."
+                        "content": "You are an expert software developer. Generate Python code. If the requirements are unclear, you must ask clarifying questions. When asking a question, explicitly address it to either [TO: ProductManager] for business logic/feature questions, or [TO: SeniorReviewer] for architecture/security/performance questions."
                     },
                     {
                         "role": "user",
@@ -740,12 +740,16 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
             logger.error(f"Evaluation failed: {e}")
     
     async def generate_answer(self, model_config: ModelConfig, problem: Dict, question: str) -> str:
-        """Use the model to act as a Product Manager and answer the clarifying question."""
+        """Use the model to act as a routed Persona (PM or Reviewer) and answer the clarifying question."""
         original_prompt = problem.get('prompt', '')
         solution = problem.get('solution', '')
         
+        persona = "Product Manager"
+        if "[TO: SeniorReviewer]" in question or "architecture" in question.lower() or "security" in question.lower() or "performance" in question.lower():
+            persona = "Senior Technical Reviewer"
+            
         system_prompt = (
-            "You are a Product Manager answering questions from a developer about a programming task.\n"
+            f"You are a {persona} answering questions from a developer about a programming task.\n"
             "Here is the complete and correct requirement:\n"
             f"```python\n{original_prompt}\n```\n"
             "And here is the intended solution logic:\n"
