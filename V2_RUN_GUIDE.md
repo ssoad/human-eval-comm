@@ -1,137 +1,146 @@
-# HumanEvalComm V2: Complete Execution Guide
+# HumanEvalComm V2: The Ultimate Execution & Research Guide
 
-This document provides a step-by-step guide to running the **HumanEvalComm V2** benchmark, visualizing the results, and performing scientific validation for research publication.
-
----
-
-## 1. System Requirements
-
-*   **Python**: 3.10 or higher.
-*   **Docker**: Highly recommended for safe code execution via the `SandboxRunner`.
-*   **API Credentials**: Create an `.env` file in the root directory and add the relevant keys for your chosen provider:
-    *   **HuggingFace**: `HF_TOKEN` (Use with `api_provider="huggingface"`)
-    *   **OpenRouter**: `OPENROUTER_API_KEY` (Use with `api_provider="openrouter"`)
-    *   **OpenAI**: `OPENAI_API_KEY` (Use with `api_provider="openai"`)
-    *   **Local (Ollama/LM Studio)**: `LOCAL_API_BASE` (e.g., `http://localhost:11434/v1`)
-    *   **Custom**: `CUSTOM_API_BASE` and `CUSTOM_API_KEY`
+This guide provides an exhaustive reference for running the **HumanEvalComm V2** benchmark suite. Whether you are running local models, cloud APIs, or multi-agent simulations, all commands and flags are detailed below.
 
 ---
 
-## 2. Setup & Installation
+## 1. Installation & Environment Setup
 
+### Quick Install
 ```bash
-# 1. Clone or navigate to the repository
+# Clone and enter repo
 cd human-eval-comm-v2
 
-# 2. Create and activate a virtual environment
+# Setup environment
 python3 -m venv venv
 source venv/bin/activate
-
-# 3. Install V2 dependencies
 pip install -r requirements_v2.txt
 
-# 4. Configure environment variables
+# Initialize configuration
 cp .env.template .env
-# Edit .env and add your keys (see above for supported providers)
 ```
+
+### API Provider Setup (.env)
+You must add the relevant keys to your `.env` for the providers you plan to use:
+*   **HuggingFace**: `HF_TOKEN`
+*   **OpenRouter**: `OPENROUTER_API_KEY`
+*   **OpenAI**: `OPENAI_API_KEY`
+*   **Local**: `LOCAL_API_BASE` (e.g., `http://localhost:11434/v1` for Ollama)
+*   **Custom**: `CUSTOM_API_BASE` and `CUSTOM_API_KEY`
 
 ---
 
-## 3. Running the Benchmarks
+## 2. Benchmark Execution Reference
 
-The V2 framework supports three distinct evaluation modes across multiple API providers.
+The core command is `python3 src/v2_benchmark.py`. Below are the primary flags:
 
-### Choosing an API Provider
-You can specify the provider using the `api_provider` argument in your run script or by modifying `v2_benchmark.py`. Supported values: `huggingface`, `openrouter`, `openai`, `local`, `custom`.
+| Flag | Type | Description |
+| :--- | :--- | :--- |
+| `--dataset-path` | `str` | Path to the `.jsonl` file or `swe-bench-lite`. |
+| `--models` | `list` | Model spec: `name:id[:provider][:tokens][:temp]`. Can be used multiple times. |
+| `--api-provider` | `str` | Default global provider (`openai`, `local`, `openrouter`, etc.). |
+| `--max-problems`| `int` | Limit the run size (useful for dry runs). Default: 3. |
+| `--request-delay`| `float` | Seconds to wait between calls (important for free tiers). |
+| `--output-dir` | `str` | Where to save `.csv` and `.json` results. |
+| `--verbose` | `bool` | Enables detailed debug logging. |
 
-### Example 1: Standard OpenAI Run (Single Model)
+---
+
+## 3. Provider Configuration Examples
+
+### A. Global Provider (Same backend for all models)
+Best when testing multiple models from the same service.
 ```bash
-# Ensure OPENAI_API_KEY is in your .env
 python3 src/v2_benchmark.py \
-  --dataset-path Benchmark/HumanEvalComm_v2.jsonl \
-  --api-provider openai \
-  --models "gpt4:gpt-4o" \
-  --max-problems 5
-```
-
-### Example 2: OpenRouter Multi-Model Run
-```bash
-# Evaluate two different models via OpenRouter
-python3 src/v2_benchmark.py \
-  --dataset-path Benchmark/HumanEvalComm_v2.jsonl \
   --api-provider openrouter \
-  --models "claude:anthropic/claude-3-sonnet" \
-  --models "deepseek:deepseek/deepseek-chat"
+  --models "claude:anthropic/claude-3-haiku" \
+  --models "llama:meta-llama/llama-3-8b-instruct"
 ```
 
-### Example 3: The "Mix & Match" (Multiple Providers)
-Evaluate a local model against a cloud model in the same run.
+### B. Per-Model Provider (Mix & Match)
+Essential for cross-provider benchmarking (e.g., comparing Local vs. Cloud).
 ```bash
 python3 src/v2_benchmark.py \
-  --dataset-path Benchmark/HumanEvalComm_v2.jsonl \
-  --models "local_llama:llama3:local" \
-  --models "cloud_gpt:gpt-4o:openai"
+  --models "local:llama3:local" \
+  --models "cloud:gpt-4o:openai"
+```
+
+### C. Customized Model Parameters
+Override default tokens and temperature for specific models.
+```bash
+# Format: nickname:model_id:provider:max_tokens:temperature
+python3 src/v2_benchmark.py \
+  --models "creative:gpt-4o:openai:2048:0.7" \
+  --models "precise:gpt-4o:openai:512:0.1"
 ```
 
 ---
 
-## 4. Benchmark Modes
+## 4. Benchmark Modes & Use Cases
 
-### Mode A: Main Communication Benchmark
-Evaluates standard requirement gathering and code generation (163 problems).
+### Mode 1: Standard Evaluation (HumanEvalComm V2)
+Evaluates communication quality and code accuracy on 163 standard problems.
 ```bash
-python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_v2.jsonl --models "test:gpt-4o:openai" --max-problems 10
+python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_v2.jsonl
 ```
 
-### Mode B: Negotiation & Pushback (Innovation Phase)
-Evaluates if models correctly reject impossible, insecure, or contradictory prompts (21 problems).
+### Mode 2: Pushback & Negotiation (Unfeasible Dataset)
+Tests if models correctly refuse impossible or unsafe tasks. **Critical for "Pushback Rate" metric.**
 ```bash
-python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_Unfeasible.jsonl --models "test:gpt-4o:openai"
+python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_Unfeasible.jsonl
 ```
 
-### Mode C: Repo-Level Engineering (SWE-bench)
-Evaluates multi-file repository navigation and ambiguity resolution using a SWE-bench Lite wrapper.
+### Mode 3: Repo-Level Context (SWE-bench)
+Tests how models handle ambiguity in large, multi-file codebases.
 ```bash
-python3 src/v2_benchmark.py --dataset-path swe-bench-lite --models "test:gpt-4o:openai" --max-problems 5
+python3 src/v2_benchmark.py --dataset-path swe-bench-lite --max-problems 10
 ```
 
 ---
 
-## 5. Visualization & Analysis
+## 5. Visualization & Research Analysis
 
-### Launching the V2 Leaderboard
-The leaderboard allows you to compare models across new V2 metrics: **Pushback Rate**, **FailFast Score**, and **Routing Accuracy**.
-
+### Step 1: Launch Leaderboard
+Visualize V2 metrics (Pushback, FailFast, Routing) in a beautiful web UI.
 ```bash
 cd flask_leaderboard
 python3 app.py
-# Access the UI at http://localhost:8080
+# Access at http://localhost:8080
 ```
 
-### Human-in-the-Loop Annotation
-To prove that your automated metrics are reliable for a paper submission, use the annotation interface:
-1.  Navigate to `http://localhost:8080/annotate`.
-2.  Grade the quality of the questions generated by the LLMs (1-3 scale).
-3.  Annotations are saved to `Benchmark/human_annotations.json`.
+### Step 2: Human-in-the-Loop Annotation
+Validate LLM-as-a-judge scores with human oversight.
+1.  Go to `http://localhost:8080/annotate`.
+2.  Review and grade model responses.
+3.  Data is saved to `Benchmark/human_annotations.json`.
 
-### Computing Scientific Correlation
-Run the correlation script to calculate **Pearson Correlation** and **Cohen’s Kappa** between your human grades and the LLM-as-a-judge scores.
+### Step 3: Scientific Validation (Correlation)
+Calculate Pearson Correlation and Cohen’s Kappa for your research paper.
 ```bash
 python3 scripts/compute_human_correlation.py
 ```
 
 ---
 
-## 6. Maintenance & Testing
+## 6. Testing & Maintenance
 
-### Verification
-Run the unit test suite to verify that the V2 detection logic (pushback heuristics, persona routing, FailFast math) is functioning correctly on your environment:
+### Verify Logic Integrity
+Run this after making changes to the benchmark logic or adding new heuristics.
 ```bash
 python3 -m pytest tests/test_v2_features.py -v
 ```
 
-### Key File Locations
-*   **Results**: `results/v2_fixed_leaderboard_[timestamp].csv`
-*   **Detailed Logs**: `benchmark_results/v2_fixed_results_[timestamp].json`
-*   **Unfeasible Dataset**: `Benchmark/HumanEvalComm_Unfeasible.jsonl`
-*   **SWE-bench Wrapper**: `src/datasets/swe_bench_comm.py`
+### Clean Up Results
+```bash
+# Remove temporary evaluation results
+rm results/*.csv benchmark_results/*.json
+```
+
+---
+
+## 7. Key File Architecture
+*   `src/v2_benchmark.py`: Main engine.
+*   `Benchmark/HumanEvalComm_v2.jsonl`: Primary dataset.
+*   `Benchmark/HumanEvalComm_Unfeasible.jsonl`: Pushback dataset.
+*   `src/datasets/swe_bench_comm.py`: SWE-bench adapter.
+*   `flask_leaderboard/`: Web dashboard source.
