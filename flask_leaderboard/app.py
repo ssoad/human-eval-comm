@@ -205,6 +205,71 @@ def files():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+@app.route('/annotate', methods=['GET', 'POST'])
+def annotate():
+    """Human annotation interface."""
+    import random
+    
+    annotations_file = os.path.join(manager.base_dir, 'Benchmark', 'human_annotations.json')
+    
+    # Load existing annotations
+    annotations = {}
+    if os.path.exists(annotations_file):
+        try:
+            with open(annotations_file, 'r') as f:
+                annotations = json.load(f)
+        except Exception:
+            pass
+            
+    if request.method == 'POST':
+        # Save annotation
+        problem_id = request.form.get('problem_id')
+        model_name = request.form.get('model_name')
+        score = request.form.get('score')
+        
+        key = f"{model_name}_{problem_id}"
+        annotations[key] = {
+            'problem_id': problem_id,
+            'model_name': model_name,
+            'human_score': int(score),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        with open(annotations_file, 'w') as f:
+            json.dump(annotations, f, indent=2)
+            
+        # If AJAX request, return JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'success'})
+        
+        # Otherwise redirect to next annotation
+        from flask import redirect, url_for
+        return redirect(url_for('annotate'))
+
+    try:
+        results_data = manager.load_detailed_results()
+        if not results_data:
+            return render_template('error.html', error="No detailed results found.")
+            
+        # Filter for results that have clarifying questions but aren't annotated yet
+        candidates = []
+        for r in results_data:
+            key = f"{r.get('model_name')}_{r.get('problem_id')}"
+            if key not in annotations and r.get('clarifying_questions'):
+                candidates.append(r)
+                
+        if not candidates:
+            return render_template('error.html', error="No more items to annotate! Great job.")
+            
+        # Pick a random candidate
+        sample = random.choice(candidates)
+        
+        return render_template('annotate.html', 
+                               sample=sample, 
+                               total_annotated=len(annotations))
+                               
+    except Exception as e:
+        return render_template('error.html', error=str(e))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)

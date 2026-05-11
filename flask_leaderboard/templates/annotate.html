@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HumanEvalComm Annotation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding-top: 2rem; }
+        .code-block { background-color: #f1f3f5; padding: 1rem; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+        .question-block { background-color: #e9ecef; padding: 1rem; border-radius: 5px; font-weight: 500; font-family: monospace; white-space: pre-wrap;}
+        .card { margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="pb-3 mb-4 border-bottom d-flex justify-content-between align-items-center">
+            <a href="/" class="d-flex align-items-center text-dark text-decoration-none">
+                <span class="fs-4">HumanEvalComm Annotator</span>
+            </a>
+            <span class="badge bg-primary">Total Annotated: {{ total_annotated }}</span>
+        </header>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between">
+                        <h5 class="mb-0">Problem ID: {{ sample.problem_id }}</h5>
+                        <span class="badge bg-secondary">{{ sample.model_name }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h6>Modified Prompt</h6>
+                        <div class="code-block mb-4">{{ sample.prompt }}</div>
+                        
+                        <h6>Questions Asked by Model</h6>
+                        <div class="question-block mb-4">{{ sample.clarifying_questions }}</div>
+                        
+                        <h6>LLM Evaluator's Judgement</h6>
+                        <div>
+                            <strong>Quality Score:</strong> <span class="badge bg-info text-dark">{{ sample.question_quality_score }}</span>
+                            (3: Good, 2: Fair, 1: Bad)
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card sticky-top" style="top: 2rem;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Your Annotation</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">How would you rate the model's questions based on the prompt's ambiguity?</p>
+                        
+                        <form method="POST" action="/annotate">
+                            <input type="hidden" name="problem_id" value="{{ sample.problem_id }}">
+                            <input type="hidden" name="model_name" value="{{ sample.model_name }}">
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" name="score" value="3" class="btn btn-outline-success btn-lg text-start">
+                                    <strong>3 - Good</strong><br>
+                                    <small>Helps recover missing info</small>
+                                </button>
+                                
+                                <button type="submit" name="score" value="2" class="btn btn-outline-warning btn-lg text-start">
+                                    <strong>2 - Fair</strong><br>
+                                    <small>Relevant but incomplete</small>
+                                </button>
+                                
+                                <button type="submit" name="score" value="1" class="btn btn-outline-danger btn-lg text-start">
+                                    <strong>1 - Bad / Irrelevant</strong><br>
+                                    <small>No questions or useless questions</small>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
