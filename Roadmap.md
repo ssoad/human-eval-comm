@@ -39,8 +39,8 @@ This document outlines the strategic roadmap for upgrading the **HumanEvalComm V
 ### 2.1 "Negotiation & Pushback" (Unfeasible Requirements)
 **Motivation**: The best developers do not blindly write code for bad requirements; they push back. If asked to "sort a 10TB array in memory," an agent should flag the architectural flaw rather than attempting to code it.
 **Action Items**:
-- [ ] Curate a new dataset: `Benchmark/HumanEvalComm_Unfeasible.jsonl` containing mathematically impossible, highly inefficient, or anti-pattern constraints.
-- [ ] Introduce a new metric: **Pushback Rate** (Does the model reject the prompt and explain why?).
+- [x] Curate a new dataset: `Benchmark/HumanEvalComm_Unfeasible.jsonl` containing mathematically impossible, highly inefficient, or anti-pattern constraints.
+- [x] Introduce a new metric: **Pushback Rate** (Does the model reject the prompt and explain why?).
 **Paper Contribution**: Shifts the paradigm from "Clarification" to "Negotiation," demonstrating advanced reasoning and architectural awareness.
 
 ### 2.2 Heterogeneous Agent Collaboration (The "Dev Team")
