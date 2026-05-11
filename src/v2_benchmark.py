@@ -110,16 +110,16 @@ class V2BenchmarkFixed:
         self.enhanced_aggregator = None
         self.fuzzer = None
         self.sandbox = None
-        self.client = None
+        self.clients = {}
         self.sandbox_available = False
         self.request_delay = request_delay
         self.api_provider = api_provider
         
         self._initialize_components()
-        self._initialize_client(api_provider)
+        self._setup_clients()
         
         logger.info(f"✅ Request delay set to {request_delay}s for free API")
-        logger.info(f"✅ API provider set to {api_provider}")
+        logger.info(f"✅ Default API provider set to {api_provider}")
     
     def _initialize_components(self):
         """Initialize V2 evaluator components."""
@@ -144,37 +144,71 @@ class V2BenchmarkFixed:
             logger.error(f"❌ Error importing V2 evaluators: {e}")
             raise
     
-    def _initialize_client(self, api_provider: str = "huggingface"):
-        """Initialize API client based on provider."""
+    def _setup_clients(self):
+        """Initialize all available API clients from .env."""
         from openai import OpenAI
         from dotenv import load_dotenv
         
         load_dotenv()
         
-        if api_provider.lower() == "huggingface":
-            hf_token = os.getenv("HF_TOKEN")
-            if not hf_token:
-                raise ValueError("❌ No HuggingFace API token found! Set HF_TOKEN in .env file")
-            
-            self.client = OpenAI(
+        # 1. HuggingFace
+        hf_token = os.getenv("HF_TOKEN")
+        if hf_token:
+            self.clients["huggingface"] = OpenAI(
                 base_url="https://router.huggingface.co/v1",
                 api_key=hf_token,
             )
-            logger.info("✅ HuggingFace client initialized")
+            logger.info("✅ HuggingFace client ready")
             
-        elif api_provider.lower() == "openrouter":
-            or_token = os.getenv("OPENROUTER_API_KEY")
-            if not or_token:
-                raise ValueError("❌ No OpenRouter API token found! Set OPENROUTER_API_KEY in .env file")
-            
-            self.client = OpenAI(
+        # 2. OpenRouter
+        or_token = os.getenv("OPENROUTER_API_KEY")
+        if or_token:
+            self.clients["openrouter"] = OpenAI(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=or_token,
             )
-            logger.info("✅ OpenRouter client initialized")
+            logger.info("✅ OpenRouter client ready")
+
+        # 3. OpenAI
+        oa_token = os.getenv("OPENAI_API_KEY")
+        if oa_token:
+            self.clients["openai"] = OpenAI(api_key=oa_token)
+            logger.info("✅ Standard OpenAI client ready")
+
+        # 4. Local
+        local_url = os.getenv("LOCAL_API_BASE", "http://localhost:1234/v1")
+        self.clients["local"] = OpenAI(
+            base_url=local_url,
+            api_key="not-needed"
+        )
+        logger.info(f"✅ Local API client ready ({local_url})")
+
+        # 5. Custom
+        custom_url = os.getenv("CUSTOM_API_BASE")
+        custom_key = os.getenv("CUSTOM_API_KEY")
+        if custom_url and custom_key:
+            self.clients["custom"] = OpenAI(
+                base_url=custom_url,
+                api_key=custom_key
+            )
+            logger.info(f"✅ Custom API client ready ({custom_url})")
+
+        if not self.clients:
+            logger.warning("⚠️ No API clients initialized! Check your .env file.")
+
+    def get_client(self, provider: str = None):
+        """Retrieve the appropriate client for the given provider."""
+        p = (provider or self.api_provider).lower()
+        if p in self.clients:
+            return self.clients[p]
+        
+        # Fallback to the first available client if specific one not found
+        if self.clients:
+            first_p = list(self.clients.keys())[0]
+            logger.warning(f"⚠️ Provider '{p}' not ready. Falling back to '{first_p}'.")
+            return self.clients[first_p]
             
-        else:
-            raise ValueError(f"❌ Unsupported API provider: {api_provider}. Supported: huggingface, openrouter")
+        raise ValueError(f"❌ No API clients available. Check .env and provider: {p}")
     
     def load_dataset(self, dataset_path: str = "data/benchmark/HumanEvalComm.jsonl", max_problems: int = 3) -> List[Dict]:
         """Load HumanEvalComm or SWE-bench dataset."""
@@ -590,9 +624,10 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                 ]
 
                 loop = asyncio.get_event_loop()
+                client = self.get_client(model_config.provider)
                 completion = await loop.run_in_executor(
                     None,
-                    lambda: self.client.chat.completions.create(
+                    lambda: client.chat.completions.create(
                         model=model_id,
                         messages=messages,
                         max_tokens=model_config.max_tokens,
@@ -1134,8 +1169,8 @@ async def main():
     parser.add_argument('--request-delay', type=float, default=6.0,
                        help='Delay between API requests in seconds')
     parser.add_argument('--api-provider', type=str, default='huggingface',
-                       choices=['huggingface', 'openrouter'],
-                       help='API provider to use (huggingface or openrouter)')
+                       choices=['huggingface', 'openrouter', 'openai', 'local', 'custom'],
+                       help='API provider to use')
     parser.add_argument('--verbose', action='store_true',
                        help='Enable verbose logging')
     

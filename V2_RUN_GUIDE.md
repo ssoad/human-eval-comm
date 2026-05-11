@@ -8,10 +8,12 @@ This document provides a step-by-step guide to running the **HumanEvalComm V2** 
 
 *   **Python**: 3.10 or higher.
 *   **Docker**: Highly recommended for safe code execution via the `SandboxRunner`.
-*   **API Credentials**: An `.env` file in the root directory containing:
-    *   `OPENAI_API_KEY` (for GPT-4o-mini / GPT-4o)
-    *   `ANTHROPIC_API_KEY` (if using Claude models)
-    *   `HUGGINGFACE_API_KEY` (for open-source models)
+*   **API Credentials**: Create an `.env` file in the root directory and add the relevant keys for your chosen provider:
+    *   **HuggingFace**: `HF_TOKEN` (Use with `api_provider="huggingface"`)
+    *   **OpenRouter**: `OPENROUTER_API_KEY` (Use with `api_provider="openrouter"`)
+    *   **OpenAI**: `OPENAI_API_KEY` (Use with `api_provider="openai"`)
+    *   **Local (Ollama/LM Studio)**: `LOCAL_API_BASE` (e.g., `http://localhost:11434/v1`)
+    *   **Custom**: `CUSTOM_API_BASE` and `CUSTOM_API_KEY`
 
 ---
 
@@ -30,36 +32,72 @@ pip install -r requirements_v2.txt
 
 # 4. Configure environment variables
 cp .env.template .env
-# Edit .env and add your API keys
+# Edit .env and add your keys (see above for supported providers)
 ```
 
 ---
 
 ## 3. Running the Benchmarks
 
-The V2 framework supports three distinct evaluation modes. Results are automatically saved to the `results/` and `benchmark_results/` directories.
+The V2 framework supports three distinct evaluation modes across multiple API providers.
+
+### Choosing an API Provider
+You can specify the provider using the `api_provider` argument in your run script or by modifying `v2_benchmark.py`. Supported values: `huggingface`, `openrouter`, `openai`, `local`, `custom`.
+
+### Example 1: Standard OpenAI Run (Single Model)
+```bash
+# Ensure OPENAI_API_KEY is in your .env
+python3 src/v2_benchmark.py \
+  --dataset-path Benchmark/HumanEvalComm_v2.jsonl \
+  --api-provider openai \
+  --models "gpt4:gpt-4o" \
+  --max-problems 5
+```
+
+### Example 2: OpenRouter Multi-Model Run
+```bash
+# Evaluate two different models via OpenRouter
+python3 src/v2_benchmark.py \
+  --dataset-path Benchmark/HumanEvalComm_v2.jsonl \
+  --api-provider openrouter \
+  --models "claude:anthropic/claude-3-sonnet" \
+  --models "deepseek:deepseek/deepseek-chat"
+```
+
+### Example 3: The "Mix & Match" (Multiple Providers)
+Evaluate a local model against a cloud model in the same run.
+```bash
+python3 src/v2_benchmark.py \
+  --dataset-path Benchmark/HumanEvalComm_v2.jsonl \
+  --models "local_llama:llama3:local" \
+  --models "cloud_gpt:gpt-4o:openai"
+```
+
+---
+
+## 4. Benchmark Modes
 
 ### Mode A: Main Communication Benchmark
 Evaluates standard requirement gathering and code generation (163 problems).
 ```bash
-python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_v2.jsonl --max-problems 10
+python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_v2.jsonl --models "test:gpt-4o:openai" --max-problems 10
 ```
 
 ### Mode B: Negotiation & Pushback (Innovation Phase)
 Evaluates if models correctly reject impossible, insecure, or contradictory prompts (21 problems).
 ```bash
-python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_Unfeasible.jsonl
+python3 src/v2_benchmark.py --dataset-path Benchmark/HumanEvalComm_Unfeasible.jsonl --models "test:gpt-4o:openai"
 ```
 
 ### Mode C: Repo-Level Engineering (SWE-bench)
 Evaluates multi-file repository navigation and ambiguity resolution using a SWE-bench Lite wrapper.
 ```bash
-python3 src/v2_benchmark.py --dataset-path swe-bench-lite --max-problems 5
+python3 src/v2_benchmark.py --dataset-path swe-bench-lite --models "test:gpt-4o:openai" --max-problems 5
 ```
 
 ---
 
-## 4. Visualization & Analysis
+## 5. Visualization & Analysis
 
 ### Launching the V2 Leaderboard
 The leaderboard allows you to compare models across new V2 metrics: **Pushback Rate**, **FailFast Score**, and **Routing Accuracy**.
@@ -84,7 +122,7 @@ python3 scripts/compute_human_correlation.py
 
 ---
 
-## 5. Maintenance & Testing
+## 6. Maintenance & Testing
 
 ### Verification
 Run the unit test suite to verify that the V2 detection logic (pushback heuristics, persona routing, FailFast math) is functioning correctly on your environment:
