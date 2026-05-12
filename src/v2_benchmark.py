@@ -603,13 +603,14 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
     
     async def generate_code(self, model_config: ModelConfig, prompt: str) -> Optional[tuple]:
         """Generate code with robust retry logic."""
-        max_retries = 3
-        base_delay = 5
+        max_retries = 5
+        base_delay = 15
         
         for attempt in range(max_retries):
             try:
                 model_id = model_config.model_id
-                if model_config.provider:
+                # Only append provider if it's not a known base provider (handled by base_url)
+                if model_config.provider and model_config.provider.lower() not in ('openrouter', 'openai', 'local', 'custom', 'huggingface'):
                     model_id = f"{model_config.model_id}:{model_config.provider}"
 
                 messages = [
@@ -971,7 +972,7 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                     results.append(result)
 
                     # Only delay for remote API providers to avoid rate limits
-                    if self.default_provider not in ('local', 'custom'):
+                    if self.api_provider not in ('local', 'custom'):
                         logger.info(f"   Waiting {self.request_delay}s (rate limit)...")
                         await asyncio.sleep(self.request_delay)
 
@@ -1134,17 +1135,56 @@ def create_model_configs(model_specs: List[str]) -> Dict[str, ModelConfig]:
     models = {}
     
     for spec in model_specs:
-        # Parse format: name:model_id:provider:max_tokens:temperature
-        parts = spec.split(':')
-        if len(parts) < 2:
-            logger.error(f"Invalid model spec: {spec}. Expected format: name:model_id[:provider][:max_tokens][:temperature]")
+        # Expected format: name:model_id[:provider][:max_tokens][:temperature]
+        # Since model_id can contain colons (e.g. "org/model:free"), we need smarter parsing.
+        
+        # First, split by colon
+        all_parts = spec.split(':')
+        if len(all_parts) < 2:
+            logger.error(f"Invalid model spec: {spec}. Minimum format: name:model_id")
             continue
             
-        name = parts[0]
-        model_id = parts[1]
-        provider = parts[2] if len(parts) > 2 else ""
-        max_tokens = int(parts[3]) if len(parts) > 3 else 1024
-        temperature = float(parts[4]) if len(parts) > 4 else 0.1
+        name = all_parts[0]
+        
+        # Remaining parts could be model_id_suffix, provider, max_tokens, temperature
+        # We'll try to identify the last 3 optional parts
+        provider = ""
+        max_tokens = 1024
+        temperature = 0.1
+        
+        # Work backwards to find temperature and max_tokens
+        current_parts = all_parts[1:]
+        
+        # Try to find temperature (float) at the very end
+        if len(current_parts) > 1:
+            try:
+                # Check if the last part is a float but not an int (or just a small float)
+                val = float(current_parts[-1])
+                if 0 <= val <= 2.0: # Realistic temperature range
+                    temperature = val
+                    current_parts = current_parts[:-1]
+            except ValueError:
+                pass
+                
+        # Try to find max_tokens (int) at the end
+        if len(current_parts) > 1:
+            try:
+                val = int(current_parts[-1])
+                if val > 10: # Realistic token limit
+                    max_tokens = val
+                    current_parts = current_parts[:-1]
+            except ValueError:
+                pass
+                
+        # Try to find provider (if it's a known one)
+        known_providers = ['huggingface', 'openrouter', 'openai', 'local', 'custom']
+        if len(current_parts) > 1:
+            if current_parts[-1].lower() in known_providers:
+                provider = current_parts[-1].lower()
+                current_parts = current_parts[:-1]
+        
+        # Everything else is the model_id
+        model_id = ":".join(current_parts)
         
         models[name] = ModelConfig(
             name=name,
