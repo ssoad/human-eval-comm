@@ -29,7 +29,7 @@ nb.cells.append(nbf.v4.new_code_cell(drive_code))
 # Cell 3: Clone Repo & Install dependencies
 clone_code = """import os
 # Clone the repository
-!git clone https://github.com/ssoad/human-eval-comm-v2.git
+!git clone -b beta https://github.com/ssoad/human-eval-comm-v2.git
 os.chdir('human-eval-comm-v2')
 
 # Install required dependencies
