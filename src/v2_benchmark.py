@@ -970,9 +970,10 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                     )
                     results.append(result)
 
-                    # Longer delay for free API
-                    logger.info(f"   Waiting {self.request_delay}s...")
-                    await asyncio.sleep(self.request_delay)
+                    # Only delay for remote API providers to avoid rate limits
+                    if self.default_provider not in ('local', 'custom'):
+                        logger.info(f"   Waiting {self.request_delay}s (rate limit)...")
+                        await asyncio.sleep(self.request_delay)
 
         logger.info(f"✅ FIXED benchmark completed! {len(results)} results")
         return results
