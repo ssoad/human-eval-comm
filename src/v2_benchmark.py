@@ -1144,61 +1144,68 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
 
 
 def create_model_configs(model_specs: List[str]) -> Dict[str, ModelConfig]:
-    """Create model configurations from string specifications."""
+    """Create model configurations from string specifications.
+
+    Preferred format (pipe-separated, unambiguous with Ollama tags):
+        name|model_id|provider|max_tokens|temperature
+        e.g.  qwen25_coder_7b|qwen2.5-coder:7b|local|1024|0.1
+
+    Legacy colon format is also accepted but ambiguous when the model_id
+    itself contains a colon (e.g. most Ollama tags).  Use the pipe format
+    for any model whose ID contains a colon.
+    """
     models = {}
-    
+
     for spec in model_specs:
-        # Expected format: name:model_id[:provider][:max_tokens][:temperature]
-        # Since model_id can contain colons (e.g. "org/model:free"), we need smarter parsing.
-        
-        # First, split by colon
-        all_parts = spec.split(':')
-        if len(all_parts) < 2:
-            logger.error(f"Invalid model spec: {spec}. Minimum format: name:model_id")
-            continue
-            
-        name = all_parts[0]
-        
-        # Remaining parts could be model_id_suffix, provider, max_tokens, temperature
-        # We'll try to identify the last 3 optional parts
-        provider = ""
-        max_tokens = 1024
-        temperature = 0.1
-        
-        # Work backwards to find temperature and max_tokens
-        current_parts = all_parts[1:]
-        
-        # Try to find temperature (float) at the very end
-        if len(current_parts) > 1:
-            try:
-                # Check if the last part is a float but not an int (or just a small float)
-                val = float(current_parts[-1])
-                if 0 <= val <= 2.0: # Realistic temperature range
-                    temperature = val
-                    current_parts = current_parts[:-1]
-            except ValueError:
-                pass
-                
-        # Try to find max_tokens (int) at the end
-        if len(current_parts) > 1:
-            try:
-                val = int(current_parts[-1])
-                if val > 10: # Realistic token limit
-                    max_tokens = val
-                    current_parts = current_parts[:-1]
-            except ValueError:
-                pass
-                
-        # Try to find provider (if it's a known one)
-        known_providers = ['huggingface', 'openrouter', 'openai', 'local', 'custom']
-        if len(current_parts) > 1:
-            if current_parts[-1].lower() in known_providers:
+        if '|' in spec:
+            # Unambiguous pipe-separated format
+            parts = spec.split('|')
+            if len(parts) < 2:
+                logger.error(f"Invalid model spec: {spec}")
+                continue
+            name       = parts[0]
+            model_id   = parts[1] if len(parts) > 1 else ""
+            provider   = parts[2].lower() if len(parts) > 2 else ""
+            max_tokens = int(parts[3]) if len(parts) > 3 else 1024
+            temperature = float(parts[4]) if len(parts) > 4 else 0.1
+        else:
+            # Legacy colon-separated format (backward-compatible)
+            all_parts = spec.split(':')
+            if len(all_parts) < 2:
+                logger.error(f"Invalid model spec: {spec}. Minimum format: name:model_id")
+                continue
+
+            name = all_parts[0]
+            provider    = ""
+            max_tokens  = 1024
+            temperature = 0.1
+            current_parts = all_parts[1:]
+
+            if len(current_parts) > 1:
+                try:
+                    val = float(current_parts[-1])
+                    if 0 <= val <= 2.0:
+                        temperature = val
+                        current_parts = current_parts[:-1]
+                except ValueError:
+                    pass
+
+            if len(current_parts) > 1:
+                try:
+                    val = int(current_parts[-1])
+                    if val > 10:
+                        max_tokens = val
+                        current_parts = current_parts[:-1]
+                except ValueError:
+                    pass
+
+            known_providers = ['huggingface', 'openrouter', 'openai', 'local', 'custom']
+            if len(current_parts) > 1 and current_parts[-1].lower() in known_providers:
                 provider = current_parts[-1].lower()
                 current_parts = current_parts[:-1]
-        
-        # Everything else is the model_id
-        model_id = ":".join(current_parts)
-        
+
+            model_id = ":".join(current_parts)
+
         models[name] = ModelConfig(
             name=name,
             model_id=model_id,

@@ -300,10 +300,12 @@ nb["cells"] = [
 
         Path(RESULTS_ROOT).mkdir(parents=True, exist_ok=True)
 
-        # Format: name:ollama_tag:local:max_tokens:temperature
+        # Format: name|ollama_tag|provider|max_tokens|temperature
+        # Using | as separator avoids ambiguity with colons inside Ollama model tags
+        # (e.g. "qwen2.5-coder:7b" contains a colon that would confuse : splitting).
         MODEL_ARGS = []
         for m in OLLAMA_MODELS:
-            MODEL_ARGS.extend(["--models", f"{m['name']}:{m['ollama']}:local:1024:0.1"])
+            MODEL_ARGS.extend(["--models", f"{m['name']}|{m['ollama']}|local|1024|0.1"])
 
         def run_benchmark(cmd, env=None):
             \"\"\"Run a benchmark command and stream its stdout/stderr in real-time.\"\"\"
