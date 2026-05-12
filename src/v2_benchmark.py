@@ -104,8 +104,8 @@ class EvaluationResult:
 
 class V2BenchmarkFixed:
     """Completely fixed V2 benchmark runner."""
-    
-    def __init__(self, request_delay: float = 5.0, api_provider: str = "huggingface"):
+
+    def __init__(self, request_delay: float = 5.0, api_provider: str = "huggingface", model_timeout: int = 300):
         """Initialize with longer delay for free API."""
         self.enhanced_aggregator = None
         self.fuzzer = None
@@ -114,6 +114,7 @@ class V2BenchmarkFixed:
         self.sandbox_available = False
         self.request_delay = request_delay
         self.api_provider = api_provider
+        self.model_timeout = model_timeout
         
         self._initialize_components()
         self._setup_clients()
@@ -624,8 +625,9 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                     }
                 ]
 
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 client = self.get_client(model_config.provider)
+                model_timeout = self.model_timeout
                 completion = await loop.run_in_executor(
                     None,
                     lambda: client.chat.completions.create(
@@ -633,7 +635,7 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
                         messages=messages,
                         max_tokens=model_config.max_tokens,
                         temperature=model_config.temperature,
-                        timeout=60
+                        timeout=model_timeout,
                     )
                 )
 
@@ -643,10 +645,16 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
 
             except Exception as e:
                 error_str = str(e)
-                if "402" in error_str or "rate" in error_str.lower() or "limit" in error_str.lower():
-                    # Rate limit or payment issue - wait longer
-                    wait_time = base_delay * (2 ** attempt)  # Exponential backoff
-                    logger.warning(f"API limit hit, waiting {wait_time}s before retry {attempt+1}/{max_retries}")
+                is_retryable = (
+                    "402" in error_str
+                    or "rate" in error_str.lower()
+                    or "limit" in error_str.lower()
+                    or "timeout" in error_str.lower()
+                    or "timed out" in error_str.lower()
+                )
+                if is_retryable:
+                    wait_time = base_delay * (2 ** attempt)
+                    logger.warning(f"Retryable error ({error_str[:60]}), waiting {wait_time}s (attempt {attempt+1}/{max_retries})")
                     await asyncio.sleep(wait_time)
                 else:
                     logger.error(f"Error generating code: {e}")
@@ -846,11 +854,16 @@ Respond with: {{"score": X.X, "confidence": 0.X}}
         try:
             # We use the same client to answer the question, but could theoretically use a fixed stronger model like GPT-4
             client = self.get_client(model_config.provider)
-            response = client.chat.completions.create(
-                model=model_config.model_id,
-                messages=messages,
-                max_tokens=256,
-                temperature=0.1
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: client.chat.completions.create(
+                    model=model_config.model_id,
+                    messages=messages,
+                    max_tokens=256,
+                    temperature=0.1,
+                    timeout=self.model_timeout,
+                )
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -1210,6 +1223,8 @@ async def main():
                        help='Maximum number of problems to evaluate')
     parser.add_argument('--request-delay', type=float, default=6.0,
                        help='Delay between API requests in seconds')
+    parser.add_argument('--model-timeout', type=int, default=300,
+                       help='Per-request timeout in seconds (increase for slow local models)')
     parser.add_argument('--api-provider', type=str, default='huggingface',
                        choices=['huggingface', 'openrouter', 'openai', 'local', 'custom'],
                        help='API provider to use')
@@ -1230,8 +1245,12 @@ async def main():
     print(f"Max Problems: {args.max_problems}")
     print(f"Request Delay: {args.request_delay}s")
     
-    # Initialize with configurable delay and API provider
-    benchmark = V2BenchmarkFixed(request_delay=args.request_delay, api_provider=args.api_provider)
+    # Initialize with configurable delay, API provider and per-request timeout
+    benchmark = V2BenchmarkFixed(
+        request_delay=args.request_delay,
+        api_provider=args.api_provider,
+        model_timeout=args.model_timeout,
+    )
     
     # Load dataset
     problems = benchmark.load_dataset(args.dataset_path, args.max_problems)

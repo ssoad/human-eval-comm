@@ -18,4 +18,5 @@ pyyaml
 scipy
 flask
 openai
+python-dotenv
 datasets    # optional: SWE-bench integration
