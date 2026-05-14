@@ -1,0 +1,11 @@
+{
+    "pulled_models": [
+        "qwen2.5-coder:7b",
+        "deepseek-coder:6.7b",
+        "codegemma:7b",
+        "starcoder2:7b",
+        "codellama:7b-instruct"
+    ],
+    "completed_tasks": [],
+    "last_update": "2026-05-14T14:18:11.474979"
+}

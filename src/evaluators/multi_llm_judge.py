@@ -64,7 +64,12 @@ class MultiLLMJudge:
         return aiohttp.ClientSession(connector=connector)
 
     def _detect_api_provider(self, model_config: Dict[str, Any]) -> str:
-        """Detect which API provider to use based on endpoint."""
+        """Detect which API provider to use based on endpoint or explicit provider field."""
+        # Explicit provider field takes priority
+        explicit = model_config.get("provider", "").lower()
+        if explicit in ("local", "ollama"):
+            return "local"
+
         endpoint = model_config.get("endpoint", "")
         if "generativelanguage.googleapis.com" in endpoint:
             return "gemini"
@@ -72,6 +77,8 @@ class MultiLLMJudge:
             return "anthropic"
         elif "openai.com" in endpoint:
             return "openai"
+        elif any(h in endpoint for h in ("localhost", "127.0.0.1", "0.0.0.0")):
+            return "local"
         else:
             return "unknown"
 
@@ -130,6 +137,8 @@ class MultiLLMJudge:
                 return await self._call_anthropic_api(model_config, prompt)
             elif provider == "openai":
                 return await self._call_openai_api(model_config, prompt)
+            elif provider == "local":
+                return await self._call_local_api(model_config, prompt)
             else:
                 logger.error(f"Unknown API provider for model {model_config.get('name')}")
                 return None
@@ -137,6 +146,52 @@ class MultiLLMJudge:
         except Exception as e:
             logger.error(f"Exception calling {model_config.get('name')}: {e}")
             return None
+
+    async def _call_local_api(
+        self, model_config: Dict[str, Any], prompt: str
+    ) -> Optional[JudgeResponse]:
+        """Call a local Ollama (or any OpenAI-compatible) judge endpoint."""
+        endpoint = model_config.get(
+            "endpoint",
+            f"{os.getenv('LOCAL_API_BASE', 'http://localhost:11434/v1')}/chat/completions",
+        )
+        # Ensure the path ends with /chat/completions
+        if not endpoint.rstrip("/").endswith("chat/completions"):
+            endpoint = endpoint.rstrip("/") + "/chat/completions"
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {model_config.get('api_key', 'not-needed')}",
+        }
+        timeout_s = model_config.get("timeout", 120)
+        payload = {
+            "model": model_config["model"],
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": model_config.get("temperature", 0.1),
+            "max_tokens": model_config.get("max_tokens", 500),
+        }
+
+        async with self._create_ssl_session() as session:
+            async with session.post(
+                endpoint,
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=timeout_s),
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    content = result["choices"][0]["message"]["content"]
+                    logger.debug(
+                        f"Local judge response for {model_config['name']}: {content[:200]}..."
+                    )
+                    return self._parse_judge_response(content, model_config["name"])
+                else:
+                    body = await response.text()
+                    logger.error(
+                        f"Local judge API error for {model_config['name']}: "
+                        f"HTTP {response.status} — {body[:200]}"
+                    )
+                    return None
 
     async def _call_gemini_api(
         self, model_config: Dict[str, Any], prompt: str

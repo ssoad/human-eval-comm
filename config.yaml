@@ -107,7 +107,21 @@ judge_models:
     temperature: 0.1
     timeout: 30
 
+  # ── Local / Ollama judge (no API key required, uses GPU) ─────────────────────
+  # Use a small model that fits alongside the benchmarked model on the same GPU.
+  # Recommended small judges (low VRAM): qwen2.5:1.5b (~1 GB), phi3:mini (~2 GB),
+  #   tinyllama:1.1b (~700 MB), gemma2:2b (~1.5 GB).
+  # Set LOCAL_JUDGE_MODEL env var to override the model field at runtime.
+  # - name: "local-judge"
+  #   provider: "local"                          # triggers _call_local_api
+  #   endpoint: "http://localhost:11434/v1/chat/completions"
+  #   model: "${LOCAL_JUDGE_MODEL:-qwen2.5:1.5b}"
+  #   api_key: "not-needed"
+  #   max_tokens: 500
+  #   temperature: 0.1
+  #   timeout: 120                               # local models can be slow
 
+  # ── Cloud fallback judges (uncomment to enable) ──────────────────────────────
   # - name: "gpt-3.5-turbo"
   #   api_key: "${OPENAI_API_KEY}"
   #   endpoint: "https://api.openai.com/v1/chat/completions"
